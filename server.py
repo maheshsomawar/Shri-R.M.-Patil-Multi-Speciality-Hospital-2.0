@@ -2020,8 +2020,14 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return
         with open(target, "rb") as fh:
             data = fh.read()
+        use_gzip = "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(data) > 1024
+        if use_gzip:
+            data = gzip.compress(data, compresslevel=5)
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        if use_gzip:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
         self._apply_security_headers(is_api=False)
         if no_store:
