@@ -120,7 +120,7 @@ def run_audit() -> Dict[str, Any]:
         cfg.allowed_origins = {"https://shrirmppatilhospital.in"}
         cfg.rate_limit_public = 200
         cfg.rate_limit_booking = 6
-        cfg.rate_limit_login = 20
+        cfg.rate_limit_login = 60
         cfg.rate_limit_notify = 20
 
         srv = create_server(cfg)
@@ -1050,6 +1050,123 @@ def run_audit() -> Dict[str, Any]:
                 "Safe HTTP Method Enforcement (405 JSON)",
                 st_del == 405 and st_trc == 405,
                 f"DELETE={st_del}, TRACE={st_trc} (no default HTML error leak)",
+            )
+
+            # 42. Gmail & Phone Password Recovery (Hashed Single-Use OTP)
+            st_ci, _, _ = http_req(
+                port,
+                "POST",
+                "/api/auth/contact-info",
+                body={"email": "dr.rohan@gmail.com", "phone": "9811223344"},
+                headers={"Cookie": rohan_cookie, "X-CSRF-Token": rohan_csrf},
+            )
+            st_fp, _, b_fp = http_req(
+                port,
+                "POST",
+                "/api/auth/forgot-password",
+                body={"username": "dr_rohan", "email": "dr.rohan@gmail.com"},
+            )
+            # Generate deterministic test code via DB directly for reset verification (never exposed in HTTP response!)
+            otp_code = srv.db.create_password_reset_code("dr_rohan", email="dr.rohan@gmail.com")
+            st_rp, _, _ = http_req(
+                port,
+                "POST",
+                "/api/auth/reset-password",
+                body={"username": "dr_rohan", "code": otp_code, "new_password": "NewRohan#2026"},
+            )
+            # Re-using same OTP must fail (400)
+            st_rp_reuse, _, _ = http_req(
+                port,
+                "POST",
+                "/api/auth/reset-password",
+                body={"username": "dr_rohan", "code": otp_code, "new_password": "Another#2026"},
+            )
+            otp_not_leaked = otp_code not in b_fp
+            record(
+                "Gmail & Phone Forgot-Password Recovery (Single-Use OTP)",
+                st_ci == 200 and st_fp == 200 and otp_not_leaked and st_rp == 200 and st_rp_reuse == 400,
+                f"Save contact={st_ci}, forgot={st_fp} (OTP hidden={otp_not_leaked}), reset={st_rp}, reuse blocked={st_rp_reuse}",
+            )
+
+            # 43. Shared Ward Nurse Login (Notifications Only, Blocked from Admin & Billing)
+            with srv.server._login_lock if hasattr(srv, "server") else srv._login_lock:
+                srv._login_failures["nurse"].clear()
+            nurse_cookie, nurse_csrf = login("nurse", cfg.staff_passwords["nurse"])
+            st_n_get, _, _ = http_req(port, "GET", "/api/nurse/notifications", headers={"Cookie": nurse_cookie})
+            st_n_post, _, _ = http_req(
+                port,
+                "POST",
+                "/api/nurse/notifications",
+                body={"title": "Vitals Ready", "message": "Patient vitals checked for OPD", "priority": "normal"},
+                headers={"Cookie": nurse_cookie, "X-CSRF-Token": nurse_csrf},
+            )
+            st_n_adm, _, _ = http_req(port, "GET", "/admin", headers={"Cookie": nurse_cookie})
+            st_n_bill, _, _ = http_req(
+                port,
+                "POST",
+                "/api/billing/invoices",
+                body={"appointment_id": rebook_id},
+                headers={"Cookie": nurse_cookie, "X-CSRF-Token": nurse_csrf},
+            )
+            record(
+                "Shared Nurse Login Scoped to Ward Notifications",
+                st_n_get == 200 and st_n_post == 201 and st_n_adm == 403 and st_n_bill == 403,
+                f"Nurse roster/alerts GET={st_n_get}, POST={st_n_post}; /admin={st_n_adm}, billing={st_n_bill}",
+            )
+
+            # 44. Separate Shiv Medical Stores Pharmacy Billing (Isolated from Hospital Billing)
+            st_hb_ph, _, _ = http_req(
+                port,
+                "POST",
+                "/api/pharmacy/bills",
+                body={"patient_name": "Blocked", "items": [{"medicine_code": "MED-PCM500", "quantity": 1}], "payment_method": "cash"},
+                headers={"Cookie": billing_cookie, "X-CSRF-Token": billing_csrf},
+            )
+            st_ph_bill, _, b_ph_bill = http_req(
+                port,
+                "POST",
+                "/api/pharmacy/bills",
+                body={"patient_name": "Aarav Deshmukh", "patient_mobile": "9876543210", "items": [{"medicine_code": "MED-PCM500", "quantity": 2}, {"medicine_code": "MED-ORS", "quantity": 1}], "payment_method": "upi"},
+                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
+            )
+            ph_b = json.loads(b_ph_bill).get("bill", {})
+            # 2*25 + 1*22 = 72 INR
+            st_ph_pur, _, _ = http_req(
+                port,
+                "POST",
+                "/api/pharmacy/purchases",
+                body={"medicine_code": "MED-AMX500", "supplier_name": "Latur Pharma Distributors", "quantity": 50, "unit_cost_inr": 60},
+                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
+            )
+            st_ph_pur_get, _, b_ph_pur_get = http_req(port, "GET", "/api/pharmacy/purchases", headers={"Cookie": pharm_cookie})
+            st_ph_rep, _, b_ph_rep = http_req(port, "GET", "/api/pharmacy/reports", headers={"Cookie": pharm_cookie})
+            rep_d = json.loads(b_ph_rep).get("report", {})
+            record(
+                "Separate Shiv Medical Stores Billing, Purchases & Reports",
+                st_hb_ph == 403 and st_ph_bill == 201 and st_ph_pur == 201 and st_ph_pur_get == 200 and json.loads(b_ph_pur_get).get("count", 0) >= 1 and st_ph_rep == 200 and str(ph_b.get("bill_number", "")).startswith("PHM-") and rep_d.get("total_sales_inr") == 72 and rep_d.get("total_purchases_inr") == 3000,
+                f"Hospital billing blocked={st_hb_ph}; bill {ph_b.get('bill_number')}=INR 72, purchase=INR 3000, store report={st_ph_rep}",
+            )
+
+            # 45. Dynamic Lab Test Catalog (Lab Tech & Admin Can Add New Tests)
+            st_pat_cat, _, _ = http_req(
+                port,
+                "POST",
+                "/api/lab/catalog",
+                body={"catalog_code": "CAT-BAD", "test_name": "Blocked", "default_price_inr": 100},
+                headers={"Cookie": p1_cookie, "X-CSRF-Token": p1_csrf},
+            )
+            st_lt_cat, _, b_lt_cat = http_req(
+                port,
+                "POST",
+                "/api/lab/catalog",
+                body={"catalog_code": "CAT-TSH", "test_name": "Thyroid Profile (T3/T4/TSH)", "category": "Endocrinology", "default_price_inr": 650},
+                headers={"Cookie": lab_cookie, "X-CSRF-Token": lab_csrf},
+            )
+            st_get_cat, _, b_get_cat = http_req(port, "GET", "/api/lab/catalog", headers={"Cookie": lab_cookie})
+            record(
+                "Dynamic Lab Test Catalog (Lab Tech & Admin)",
+                st_pat_cat == 403 and st_lt_cat == 201 and st_get_cat == 200 and json.loads(b_get_cat).get("count", 0) >= 5,
+                f"Patient add blocked={st_pat_cat}; Lab Tech added CAT-TSH={st_lt_cat}; catalog count={json.loads(b_get_cat).get('count')}",
             )
 
             # 13. Rate limiting enforcement

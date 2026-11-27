@@ -857,6 +857,67 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"privacy_requests": rows, "count": len(rows)})
             return
 
+        # Shared Ward Nurse Roster & Notifications (Nurse, Doctor, Admin ONLY — zero billing/admin leak!)
+        if path == "/api/nurse/notifications":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("nurse", "doctor", "admin"):
+                self._send_json(403, {"error": "Nurse, Doctor, or Admin access required"})
+                return
+            self._send_json(200, self.db.list_nurse_roster_and_alerts())
+            return
+
+        # Separate Shiv Medical Stores Financial Reports, Purchases & Bills (Pharmacist & Admin ONLY — separate from hospital billing_desk!)
+        if path == "/api/pharmacy/reports":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            self._send_json(200, {"report": self.db.get_pharmacy_financial_report()})
+            return
+
+        if path == "/api/pharmacy/purchases":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            purchases = self.db.list_pharmacy_purchases(50)
+            self._send_json(200, {"store_name": "Shiv Medical Stores", "purchases": purchases, "count": len(purchases)})
+            return
+
+        if path == "/api/pharmacy/bills":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            bills = self.db.list_pharmacy_bills(50)
+            self._send_json(200, {"store_name": "Shiv Medical Stores", "bills": bills, "count": len(bills)})
+            return
+
+        # Dynamic Lab Test Catalog (All clinical staff can view; Lab Tech & Admin can add new tests)
+        if path == "/api/lab/catalog":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("lab_tech", "doctor", "admin", "receptionist"):
+                self._send_json(403, {"error": "Clinical staff access required"})
+                return
+            items = self.db.list_lab_catalog()
+            self._send_json(200, {"catalog": items, "count": len(items)})
+            return
+
         if path == "/api/pharmacy/inventory":
             session = self._get_session()
             if not session:
@@ -1796,6 +1857,222 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             self.db.log_audit(session["username"], f"REFUND_PROCESSED:{rec['refund_code']}", self._client_ip(), 201)
             self._send_json(201, {"message": "Refund processed", "refund": rec})
+            return
+
+        # Save/Update User Gmail & Phone for Password Recovery (Authenticated + CSRF)
+        if path == "/api/auth/contact-info":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            email = str(body.get("email", "")).strip().lower()
+            phone = re.sub(r"[\s-]", "", str(body.get("phone", "")).strip())
+            if email and not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
+                self._send_json(400, {"error": "Please enter a valid email address (e.g. name@gmail.com)."})
+                return
+            if phone and not MOBILE_RE.match(phone):
+                self._send_json(400, {"error": "Please enter a valid 10-digit Indian mobile number."})
+                return
+            if not email and not phone:
+                self._send_json(400, {"error": "Provide at least a Gmail/email or 10-digit phone number."})
+                return
+            self.db.update_user_recovery_contact(session["username"], sanitize_text(email, 120), phone)
+            self.db.log_audit(session["username"], "UPDATE_RECOVERY_CONTACT", self._client_ip(), 200)
+            self._send_json(200, {"message": "Recovery email and phone saved"})
+            return
+
+        # Forgot Password (Rate-limited; verifies registered Gmail or phone; never leaks account existence or OTP)
+        if path == "/api/auth/forgot-password":
+            if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            username = str(body.get("username", "")).strip().lower()
+            email = str(body.get("email", "")).strip().lower()
+            phone = re.sub(r"[\s-]", "", str(body.get("phone", "")).strip())
+            if not username or (not email and not phone):
+                self._send_json(400, {"error": "Username and registered Gmail or phone number are required."})
+                return
+            code = self.db.create_password_reset_code(username, email=email, phone=phone)
+            if code:
+                if phone:
+                    self._dispatch_sms(phone, f"Shri R.M. Patil Hospital password reset OTP: {code} (valid 10 min).")
+                self.db.log_audit(username, "PASSWORD_RESET_REQUESTED", self._client_ip(), 200)
+            self._send_json(200, {"message": "If the username and recovery email/phone match, a 6-digit reset code has been dispatched."})
+            return
+
+        # Reset Password with 6-Digit Recovery Code (Single-use, 10-min expiry, scrypt hashed)
+        if path == "/api/auth/reset-password":
+            if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            username = str(body.get("username", "")).strip().lower()
+            code = str(body.get("code", "")).strip()
+            new_pw = str(body.get("new_password", ""))
+            if not username or not re.match(r"^\d{6}$", code):
+                self._send_json(400, {"error": "Valid username and 6-digit recovery code required."})
+                return
+            if len(new_pw) < 8 or not re.search(r"[A-Za-z]", new_pw) or not re.search(r"\d", new_pw):
+                self._send_json(400, {"error": "New password must be 8+ characters with a letter and a number."})
+                return
+            ok = self.db.reset_password_with_code(username, code, new_pw)
+            if not ok:
+                self.db.log_audit(username, "PASSWORD_RESET_FAILED", self._client_ip(), 400)
+                self._send_json(400, {"error": "Invalid or expired recovery code."})
+                return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[username].clear()  # type: ignore[attr-defined]
+            self.db.log_audit(username, "PASSWORD_RESET_SUCCESS", self._client_ip(), 200)
+            self._send_json(200, {"message": "Password updated successfully. Please sign in with your new password."})
+            return
+
+        # Shared Ward Nurse Notifications (Nurse, Doctor, Admin ONLY)
+        if path == "/api/nurse/notifications":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("nurse", "doctor", "admin"):
+                self._send_json(403, {"error": "Nurse, Doctor, or Admin access required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            title = sanitize_text(str(body.get("title", "")), 100)
+            msg = sanitize_text(str(body.get("message", "")), 300)
+            appt_no = sanitize_text(str(body.get("appointment_number", "")), 40)
+            priority = str(body.get("priority", "normal")).strip().lower()
+            if priority not in ("normal", "urgent"):
+                priority = "normal"
+            if not title or not msg:
+                self._send_json(400, {"error": "Notification title and message are required."})
+                return
+            rec = self.db.create_nurse_notification(title, msg, session["username"], appt_no, priority)
+            self.db.log_audit(session["username"], f"NURSE_ALERT:{priority}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Nurse ward notification posted", "notification": rec})
+            return
+
+        # Separate Shiv Medical Stores Purchases (Pharmacist & Admin ONLY — isolated from hospital billing_desk!)
+        if path == "/api/pharmacy/purchases":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_PHARMACY_PURCHASE", self._client_ip(), 403)
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            med_code = str(body.get("medicine_code", "")).strip().upper()
+            supplier = sanitize_text(str(body.get("supplier_name", "")), 100)
+            try:
+                qty = int(body.get("quantity", 0))
+                unit_cost = int(body.get("unit_cost_inr", 0))
+            except (ValueError, TypeError):
+                qty, unit_cost = 0, -1
+            if not med_code or not supplier or qty <= 0 or unit_cost < 0:
+                self._send_json(400, {"error": "Valid medicine_code, supplier_name, quantity, and unit_cost_inr required."})
+                return
+            rec = self.db.record_pharmacy_purchase(med_code, supplier, qty, unit_cost, session["username"])
+            if not rec:
+                self._send_json(404, {"error": "Medicine code not found in inventory"})
+                return
+            self.db.log_audit(session["username"], f"PHARMACY_PURCHASE:{rec['purchase_code']}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Purchase recorded and stock updated", "purchase": rec})
+            return
+
+        # Separate Shiv Medical Stores Billing (Pharmacist & Admin ONLY — isolated from hospital billing_desk!)
+        if path == "/api/pharmacy/bills":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_PHARMACY_BILL", self._client_ip(), 403)
+                self._send_json(403, {"error": "Only Shiv Medical Stores Pharmacist or Admin can issue pharmacy bills"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            p_name = sanitize_text(str(body.get("patient_name", "")), 80)
+            p_mob = re.sub(r"[\s-]", "", str(body.get("patient_mobile", "")).strip())
+            items = body.get("items")
+            pay_m = str(body.get("payment_method", "cash")).strip().lower()
+            if not p_name or not isinstance(items, list) or not items or pay_m not in ("cash", "upi", "card"):
+                self._send_json(400, {"error": "Valid patient_name, items list, and payment_method (cash/upi/card) required."})
+                return
+            bill, b_err = self.db.create_pharmacy_bill(p_name, p_mob, items, pay_m, session["username"])
+            if b_err or not bill:
+                self._send_json(400, {"error": b_err or "Could not create pharmacy bill"})
+                return
+            self.db.log_audit(session["username"], f"PHARMACY_BILL:{bill['bill_number']}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Shiv Medical Stores bill created", "bill": bill})
+            return
+
+        # Dynamic Lab Test Catalog Addition (Lab Tech & Admin ONLY)
+        if path == "/api/lab/catalog":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("lab_tech", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_LAB_CATALOG_ADD", self._client_ip(), 403)
+                self._send_json(403, {"error": "Only Lab Technician or Admin can add new lab tests"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            cat_code = re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("catalog_code", "")).strip().upper())[:24]
+            test_name = sanitize_text(str(body.get("test_name", "")), 120)
+            category = sanitize_text(str(body.get("category", "Pathology")), 60)
+            try:
+                price = int(body.get("default_price_inr", 0))
+            except (ValueError, TypeError):
+                price = -1
+            if not cat_code or not test_name or price < 0 or price > 100000:
+                self._send_json(400, {"error": "Valid catalog_code, test_name, and default_price_inr (0-100000) required."})
+                return
+            added = self.db.add_lab_catalog_item(cat_code, test_name, category, price, session["username"])
+            if not added:
+                self._send_json(409, {"error": "Lab test code or name already exists in catalog."})
+                return
+            self.db.log_audit(session["username"], f"LAB_CATALOG_ADD:{cat_code}", self._client_ip(), 201)
+            self._send_json(201, {"message": "New lab test added to catalog", "item": added})
             return
 
         if path == "/api/staff/holidays":

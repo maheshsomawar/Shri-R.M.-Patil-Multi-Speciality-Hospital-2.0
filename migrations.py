@@ -460,6 +460,95 @@ def _m008_indexes_and_background_jobs(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m009_recovery_nurse_pharmacy_lab_catalog(conn: sqlite3.Connection) -> None:
+    u_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "email" not in u_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+    if "phone" not in u_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
+
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            token_hash TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pwd_reset_user ON password_reset_tokens(username, used);
+
+        CREATE TABLE IF NOT EXISTS nurse_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_number TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('normal', 'urgent')),
+            created_by TEXT NOT NULL,
+            acknowledged INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS pharmacy_bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bill_number TEXT UNIQUE NOT NULL,
+            store_name TEXT NOT NULL DEFAULT 'Shiv Medical Stores',
+            patient_name TEXT NOT NULL,
+            patient_mobile TEXT NOT NULL DEFAULT '',
+            items_json TEXT NOT NULL,
+            total_inr INTEGER NOT NULL,
+            payment_method TEXT NOT NULL DEFAULT 'cash' CHECK(payment_method IN ('cash', 'upi', 'card')),
+            payment_status TEXT NOT NULL DEFAULT 'PAID' CHECK(payment_status IN ('PAID', 'PENDING')),
+            billed_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pharmacy_bills_created ON pharmacy_bills(created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS pharmacy_purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            purchase_code TEXT UNIQUE NOT NULL,
+            medicine_code TEXT NOT NULL,
+            supplier_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            unit_cost_inr INTEGER NOT NULL CHECK(unit_cost_inr >= 0),
+            total_cost_inr INTEGER NOT NULL,
+            recorded_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS lab_test_catalog (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            catalog_code TEXT UNIQUE NOT NULL,
+            test_name TEXT UNIQUE NOT NULL,
+            category TEXT NOT NULL DEFAULT 'Pathology',
+            default_price_inr INTEGER NOT NULL CHECK(default_price_inr >= 0),
+            added_by TEXT NOT NULL DEFAULT 'system',
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL
+        );
+        """
+    )
+    now = int(time.time())
+    defaults = [
+        ("CAT-CBC", "Complete Blood Count (CBC)", "Pathology", 350, "system", now),
+        ("CAT-BSL", "Blood Sugar (FBS / PPBS)", "Biochemistry", 150, "system", now),
+        ("CAT-ELEC", "Serum Electrolytes", "Biochemistry", 450, "system", now),
+        ("CAT-XRAY", "Digital X-Ray", "Radiology", 400, "system", now),
+    ]
+    for row in defaults:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO lab_test_catalog
+            (catalog_code, test_name, category, default_price_inr, added_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            row,
+        )
+
+
 MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("001_initial_schema", _m001_initial_schema),
     ("002_departments_and_doctors", _m002_departments_and_doctors),
@@ -469,6 +558,7 @@ MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("006_clinical_pharmacy_lab_billing", _m006_clinical_pharmacy_lab_billing),
     ("007_privacy_consent_refunds_billing", _m007_privacy_consent_refunds_billing),
     ("008_indexes_and_background_jobs", _m008_indexes_and_background_jobs),
+    ("009_recovery_nurse_pharmacy_lab_catalog", _m009_recovery_nurse_pharmacy_lab_catalog),
 ]
 
 
