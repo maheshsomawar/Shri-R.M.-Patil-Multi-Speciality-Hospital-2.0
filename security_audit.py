@@ -53,7 +53,7 @@ def http_req(
     body: Any = None,
     headers: Dict[str, str] | None = None,
 ) -> Tuple[int, Dict[str, str], str]:
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
     hdrs = dict(headers or {})
     raw_body = None
     if body is not None:
