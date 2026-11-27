@@ -1734,6 +1734,182 @@
       document.getElementById("policy-modal").classList.add("hidden");
     });
 
+
+    // ==================== LIVE SQLITE BACKEND BRIDGE ====================
+    state.liveMode = false;
+
+    async function apiFetch(url, options = {}) {
+      const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+      if (state.csrfToken && ["POST", "PATCH", "PUT", "DELETE"].includes((options.method || "GET").toUpperCase())) {
+        headers["X-CSRF-Token"] = state.csrfToken;
+      }
+      const res = await fetch(url, Object.assign({}, options, { headers, credentials: "same-origin" }));
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function syncPortalFromServer() {
+      if (!state.liveMode || !state.currentUser) return;
+      const apRes = await apiFetch("/api/staff/appointments");
+      if (apRes.ok && Array.isArray(apRes.data.appointments)) {
+        state.appointments = apRes.data.appointments.map(a => ({
+          id: a.id,
+          apptNo: a.appointment_number,
+          date: a.appointment_date,
+          slotTime: a.slot_time || "",
+          qrToken: a.qr_token || "",
+          paymentStatus: "CONFIRMED",
+          amount: DEPT_FEES[a.department] || 500,
+          queueToken: a.queue_token || "",
+          firstName: a.first_name,
+          lastName: a.last_name,
+          mobile: a.mobile,
+          department: a.department,
+          doctor: a.doctor_username,
+          message: a.message || "",
+          status: a.status
+        }));
+      }
+      const nRes = await apiFetch("/api/staff/notifications");
+      if (nRes.ok && Array.isArray(nRes.data.notifications)) {
+        state.notifications = nRes.data.notifications.map(n => ({
+          time: new Date((n.created_at || 0) * 1000).toTimeString().slice(0, 8),
+          apptNo: n.appointment_number,
+          doctor: n.doctor_username,
+          mobile: n.recipient_mobile,
+          type: n.notification_type,
+          sentBy: n.sent_by,
+          text: n.body
+        }));
+      }
+      if (state.currentUser.role === "admin") {
+        const aRes = await apiFetch("/api/admin/audit");
+        if (aRes.ok && Array.isArray(aRes.data.audit_logs)) {
+          state.auditLogs = aRes.data.audit_logs.map(l => ({
+            time: new Date((l.created_at || 0) * 1000).toTimeString().slice(0, 8),
+            actor: l.actor,
+            action: l.action,
+            status: l.status_code
+          }));
+        }
+      }
+      renderPortal();
+    }
+
+    async function detectLiveBackend() {
+      if (!window.location.protocol.startsWith("http")) return;
+      try {
+        const r = await fetch("/api/health", { credentials: "same-origin" });
+        if (!r.ok) return;
+        const h = await r.json();
+        if (h.status !== "ok") return;
+        state.liveMode = true;
+        const navBtn = document.getElementById("nav-book-btn");
+        if (navBtn && !document.getElementById("live-db-pill")) {
+          const pill = document.createElement("span");
+          pill.id = "live-db-pill";
+          pill.className = "hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold";
+          pill.textContent = "LIVE SQLite DB";
+          navBtn.parentNode.insertBefore(pill, navBtn);
+        }
+        // Check if already logged in via HttpOnly cookie
+        const me = await apiFetch("/api/auth/me");
+        if (me.ok && me.data.username) {
+          state.currentUser = { username: me.data.username, fullName: me.data.full_name, role: me.data.role };
+          state.csrfToken = me.data.csrf_token || "";
+          await syncPortalFromServer();
+        }
+      } catch (_) {}
+    }
+
+    // Intercept booking form for live SQLite persistence when running on server.py
+    document.getElementById("appointment-form").addEventListener("submit", async function (e) {
+      if (!state.liveMode) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const errBox = document.getElementById("form-error");
+      const okBox = document.getElementById("form-success");
+      errBox.classList.add("hidden");
+      okBox.classList.add("hidden");
+      const payload = {
+        first_name: document.getElementById("first-name").value.trim(),
+        last_name: document.getElementById("last-name").value.trim(),
+        mobile: document.getElementById("mobile-number").value.replace(/[\s-]/g, ""),
+        appointment_date: document.getElementById("appointment-date").value,
+        slot_time: document.getElementById("slot-time-select").value,
+        department: document.getElementById("department-select").value,
+        payment_method: document.getElementById("payment-method-select").value,
+        message: document.getElementById("patient-message").value
+      };
+      const res = await apiFetch("/api/appointments", { method: "POST", body: JSON.stringify(payload) });
+      if (!res.ok) {
+        errBox.textContent = `HTTP ${res.status}: ${res.data.error || "Booking failed"}`;
+        errBox.classList.remove("hidden");
+        showToast(res.data.error || "Booking failed", "red");
+        return;
+      }
+      const ap = res.data.appointment;
+      const pay = res.data.payment || {};
+      const sms = res.data.confirmation_sms || {};
+      okBox.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-bold text-emerald-300 text-sm">Saved to SQLite · ${ap.appointment_number} (${ap.slot_time || "OPD"})</span>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-[10px] font-bold">HTTP 201 · PERSISTED</span>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3 pt-1">
+          <div class="bg-slate-950/80 border border-slate-700 rounded-lg p-3 space-y-1">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">Non-Sensitive QR Token</div>
+            <div class="font-mono text-teal-300 font-bold text-sm">${ap.qr_token}</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-700 rounded-lg p-3 space-y-1">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">Payment Status</div>
+            <div class="font-bold text-amber-300 text-xs">${pay.payment_status || "PENDING"} · ₹${pay.amount_inr || 0} (${pay.method || "pay_at_hospital"})</div>
+          </div>
+        </div>
+        <div class="bg-slate-950/80 border border-emerald-500/30 rounded-lg p-3 font-mono text-[11px] text-slate-200">📱 ${sms.text || ""}</div>
+      `;
+      okBox.classList.remove("hidden");
+      this.reset();
+      document.getElementById("appointment-date").value = payload.appointment_date;
+      showToast(`Saved ${ap.appointment_number} to SQLite!`, "teal");
+      if (state.currentUser) syncPortalFromServer();
+    }, true);
+
+    // Wire live login for staff-login-form
+    document.getElementById("staff-login-form").addEventListener("submit", async function (e) {
+      if (!state.liveMode) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const errEl = document.getElementById("login-error");
+      errEl.classList.add("hidden");
+      const username = document.getElementById("login-username").value.trim().toLowerCase();
+      const password = document.getElementById("login-password").value;
+      const res = await apiFetch("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+      if (!res.ok) {
+        errEl.textContent = `HTTP ${res.status}: ${res.data.error || "Login failed"}`;
+        errEl.classList.remove("hidden");
+        return;
+      }
+      state.currentUser = { username: res.data.user.username, fullName: res.data.user.full_name, role: res.data.user.role };
+      state.csrfToken = res.data.csrf_token || "";
+      this.reset();
+      showToast(`Authenticated as ${state.currentUser.fullName} (SQLite session active)`, "teal");
+      await syncPortalFromServer();
+    }, true);
+
+    // Wire live logout
+    document.getElementById("logout-btn").addEventListener("click", async function (e) {
+      if (!state.liveMode) return;
+      e.stopImmediatePropagation();
+      await apiFetch("/api/auth/logout", { method: "POST", body: "{}" });
+      state.currentUser = null;
+      state.csrfToken = "";
+      showToast("Signed out — HttpOnly cookie cleared.", "teal");
+      renderPortal();
+    }, true);
+
+    detectLiveBackend();
+
     // Init
     refreshAvailableSlots();
     renderAuditCards();

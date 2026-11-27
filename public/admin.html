@@ -412,6 +412,38 @@
         }
       });
     }
+
+    // Auto-load real SQLite admin KPIs & audit logs when served via live /admin route
+    (async function initLiveAdmin() {
+      if (!window.location.protocol.startsWith("http")) return;
+      try {
+        const me = await fetch("/api/auth/me", { credentials: "same-origin" });
+        if (!me.ok) return;
+        const meData = await me.json();
+        if (meData.role !== "admin") return;
+        const ovRes = await fetch("/api/admin/overview", { credentials: "same-origin" });
+        const auRes = await fetch("/api/admin/audit", { credentials: "same-origin" });
+        if (ovRes.ok) {
+          const ov = (await ovRes.json()).overview || {};
+          document.getElementById("kpi-total-appts").textContent = String(ov.total_appointments ?? 0);
+          document.getElementById("kpi-paid-rev").textContent = "₹" + String(ov.paid_revenue_inr ?? 0);
+          document.getElementById("kpi-pending-rev").textContent = "₹" + String(ov.pending_revenue_inr ?? 0);
+        }
+        if (auRes.ok) {
+          const logs = (await auRes.json()).audit_logs || [];
+          state.logs = logs.map(l => ({
+            time: new Date((l.created_at || 0) * 1000).toTimeString().slice(0, 8),
+            actor: l.actor,
+            action: l.action,
+            status: l.status_code
+          }));
+        }
+        unlockAdmin();
+        state.csrf = meData.csrf_token || state.csrf;
+        document.getElementById("admin-csrf-display").textContent = state.csrf + " (LIVE SQLite)";
+      } catch (_) {}
+    })();
+
   </script>
 </body>
 </html>
