@@ -96,7 +96,6 @@ class HospitalDB:
         conn = sqlite3.connect(self.db_path, timeout=15.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
             conn.execute("PRAGMA busy_timeout=10000;")
@@ -110,6 +109,7 @@ class HospitalDB:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
             run_migrations(conn)
 
     def list_departments(self) -> List[Dict[str, Any]]:
@@ -809,12 +809,16 @@ class HospitalDB:
         method: str,
         provider_order_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        amount_inr = self.get_doctor_fee_inr(doctor_username)
         now = int(time.time())
         order_id = provider_order_id if (method == "online_razorpay" and provider_order_id) else (
             f"order_test_{secrets.token_hex(8)}" if method == "online_razorpay" else None
         )
         with self._connect() as conn:
+            fee_row = conn.execute(
+                "SELECT consultation_fee_inr FROM doctors WHERE username = ?",
+                (doctor_username,),
+            ).fetchone()
+            amount_inr = int(fee_row["consultation_fee_inr"]) if fee_row else 500
             cur = conn.execute(
                 """
                 INSERT INTO payments
@@ -908,7 +912,7 @@ class HospitalDB:
                            p.payment_status, p.method AS payment_method, p.amount_inr, p.receipt_number
                     FROM appointments a
                     LEFT JOIN payments p ON p.appointment_id = a.id
-                    WHERE a.qr_token = ? AND a.qr_token != ''
+                    WHERE a.qr_token = ? AND a.qr_token != '' AND a.status != 'cancelled'
                     """,
                     (qr_token,),
                 ).fetchone()
@@ -1077,14 +1081,20 @@ class HospitalDB:
                 }
 
     def create_lab_test(
-        self, appointment_id: int, doctor_username: str, test_name: str, category: str, price_inr: int
+        self, appointment_id: int, doctor_username: str, test_name: str, category: str, price_inr: int, enforce_owner: bool = False
     ) -> Optional[Dict[str, Any]]:
         now = int(time.time())
         test_code = f"LAB-{secrets.token_hex(3).upper()}"
         with self._connect() as conn:
-            appt = conn.execute(
-                "SELECT id, patient_code FROM appointments WHERE id = ?", (appointment_id,)
-            ).fetchone()
+            if enforce_owner:
+                appt = conn.execute(
+                    "SELECT id, patient_code FROM appointments WHERE id = ? AND doctor_username = ?",
+                    (appointment_id, doctor_username),
+                ).fetchone()
+            else:
+                appt = conn.execute(
+                    "SELECT id, patient_code FROM appointments WHERE id = ?", (appointment_id,)
+                ).fetchone()
             if not appt:
                 return None
             cur = conn.execute(

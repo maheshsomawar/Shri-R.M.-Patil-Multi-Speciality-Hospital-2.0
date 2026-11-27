@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Compile-check all Python modules
-        run: python3 -m py_compile server.py db.py migrations.py backup_db.py db_optimize.py security_audit.py traffic_sim.py
+        run: python3 -m py_compile server.py db.py migrations.py backup_db.py db_optimize.py security_audit.py traffic_sim.py load_test_1500.py
 
       - name: Verify idempotent SQLite migrations (Asia/Kolkata)
         run: |
@@ -29,8 +29,11 @@ jobs:
       - name: Verify SQLite EXPLAIN QUERY PLAN index usage
         run: python3 db_optimize.py
 
-      - name: Run 36-point Security, Privacy, RBAC & Refund Audit
+      - name: Run 41-point Security, Privacy, RBAC & Refund Audit
         run: python3 security_audit.py
 
       - name: Run 380-request Concurrent Traffic & Double-Booking Race Simulation
         run: python3 traffic_sim.py
+
+      - name: Run 7-Stage Concurrency Load Benchmark (100-1,500 Users)
+        run: python3 load_test_1500.py

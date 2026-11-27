@@ -18,6 +18,8 @@ Features & Security Controls:
 
 import base64
 import collections
+import concurrent.futures
+import gzip
 import hashlib
 import hmac
 import html
@@ -174,10 +176,12 @@ class SlidingWindowRateLimiter:
 
 
 class TokenSigner:
-    """HMAC-SHA256 signed session tokens with expiration."""
+    """HMAC-SHA256 signed session tokens with expiration and server-side revocation."""
 
     def __init__(self, secret_key: str) -> None:
         self._key = secret_key.encode("utf-8")
+        self._revoked_lock = threading.Lock()
+        self._revoked: Dict[str, int] = {}
 
     def sign(self, payload: Dict[str, Any], ttl_seconds: int = 3600) -> str:
         body = dict(payload)
@@ -188,9 +192,24 @@ class TokenSigner:
         sig = hmac.new(self._key, b64.encode("ascii"), hashlib.sha256).hexdigest()
         return f"{b64}.{sig}"
 
+    def revoke(self, token: str) -> None:
+        try:
+            _, sig = token.split(".", 1)
+            now = int(time.time())
+            with self._revoked_lock:
+                self._revoked[sig] = now + 3600
+                expired = [k for k, exp in self._revoked.items() if exp < now]
+                for k in expired:
+                    del self._revoked[k]
+        except Exception:
+            pass
+
     def verify(self, token: str) -> Optional[Dict[str, Any]]:
         try:
             b64, sig = token.split(".", 1)
+            with self._revoked_lock:
+                if sig in self._revoked:
+                    return None
             expected = hmac.new(self._key, b64.encode("ascii"), hashlib.sha256).hexdigest()
             if not hmac.compare_digest(sig, expected):
                 return None
@@ -255,10 +274,22 @@ class MetricsCollector:
         self._lock = threading.Lock()
         self.started_at = time.time()
         self.total_requests = 0
+        self.active_requests = 0
+        self.peak_concurrent = 0
         self.status_2xx = 0
         self.status_4xx = 0
         self.status_429 = 0
         self.status_5xx = 0
+
+    def enter_request(self) -> None:
+        with self._lock:
+            self.active_requests += 1
+            if self.active_requests > self.peak_concurrent:
+                self.peak_concurrent = self.active_requests
+
+    def exit_request(self) -> None:
+        with self._lock:
+            self.active_requests = max(0, self.active_requests - 1)
 
     def record(self, status: int) -> None:
         with self._lock:
@@ -278,6 +309,8 @@ class MetricsCollector:
             return {
                 "uptime_seconds": round(time.time() - self.started_at, 1),
                 "total_requests": self.total_requests,
+                "active_requests": self.active_requests,
+                "peak_concurrent": self.peak_concurrent,
                 "status_2xx": self.status_2xx,
                 "status_4xx": self.status_4xx,
                 "status_429": self.status_429,
@@ -309,7 +342,7 @@ class PublicTTLCache:
 class HospitalServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
-    request_queue_size = 128
+    request_queue_size = 512
 
     def __init__(self, server_address, handler_cls, config: AppConfig, db: HospitalDB):
         super().__init__(server_address, handler_cls)
@@ -319,6 +352,31 @@ class HospitalServer(ThreadingHTTPServer):
         self.rate_limiter = SlidingWindowRateLimiter()
         self.metrics = MetricsCollector()
         self.public_cache = PublicTTLCache(ttl_sec=30.0)
+        max_workers = int(os.environ.get("MAX_WORKERS", "64"))
+        self._pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        self._login_lock = threading.Lock()
+        self._login_failures: Dict[str, Deque[float]] = collections.defaultdict(collections.deque)
+
+    def process_request(self, request, client_address) -> None:
+        request.settimeout(10.0)
+        self._pool.submit(self._bounded_worker, request, client_address)
+
+    def _bounded_worker(self, request, client_address) -> None:
+        self.metrics.enter_request()
+        try:
+            self.finish_request(request, client_address)
+        except Exception:
+            self.handle_error(request, client_address)
+        finally:
+            self.metrics.exit_request()
+            self.shutdown_request(request)
+
+    def server_close(self) -> None:
+        try:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        super().server_close()
 
 
 class HospitalRequestHandler(BaseHTTPRequestHandler):
@@ -526,6 +584,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             )
             return False
         return True
+
+    def _method_not_allowed(self) -> None:
+        self._send_json(405, {"error": "Method not allowed"})
+
+    def do_PUT(self) -> None:
+        self._method_not_allowed()
+
+    def do_DELETE(self) -> None:
+        self._method_not_allowed()
+
+    def do_TRACE(self) -> None:
+        self._method_not_allowed()
 
     def do_OPTIONS(self) -> None:
         origin = self.headers.get("Origin")
@@ -993,6 +1063,33 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/robots.txt":
+            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(txt)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(txt)
+            return
+
+        if path == "/sitemap.xml":
+            xml = (
+                b'<?xml version="1.0" encoding="UTF-8"?>'
+                b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                b'<url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>'
+                b'</urlset>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "application/xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(xml)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(xml)
+            return
+
         if path == "/" or path == "/index.html":
             self._serve_static("index.html")
             return
@@ -1051,11 +1148,37 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             username = str(body.get("username", "")).strip().lower()
             password = str(body.get("password", ""))
+            now_m = time.monotonic()
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                dq = self.server._login_failures[username]  # type: ignore[attr-defined]
+                while dq and dq[0] <= now_m - 300.0:
+                    dq.popleft()
+                if len(dq) >= 5:
+                    self.db.log_audit(username or "anonymous", "ACCOUNT_LOCKED_BRUTEFORCE", self._client_ip(), 429)
+                    self._send_json(
+                        429,
+                        {"error": "Account temporarily locked due to too many failed login attempts. Try again in 5 minutes."},
+                        extra_headers={"Retry-After": "300"},
+                    )
+                    return
             user = self.db.get_user_by_username(username)
             if not user or not verify_password(password, user["password_hash"]):
+                with self.server._login_lock:  # type: ignore[attr-defined]
+                    self.server._login_failures[username].append(now_m)  # type: ignore[attr-defined]
                 self.db.log_audit(username or "anonymous", "LOGIN_FAILED", self._client_ip(), 401)
                 self._send_json(401, {"error": "Invalid username or password"})
                 return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[username].clear()  # type: ignore[attr-defined]
+            prev_cookie = self.headers.get("Cookie", "")
+            if prev_cookie:
+                prev_jar = cookies.SimpleCookie()
+                try:
+                    prev_jar.load(prev_cookie)
+                    if "rmp_session" in prev_jar:
+                        self.signer.revoke(prev_jar["rmp_session"].value)
+                except Exception:
+                    pass
             token = self.signer.sign(
                 {
                     "username": user["username"],
@@ -1086,6 +1209,15 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/auth/logout":
+            raw_cookie = self.headers.get("Cookie", "")
+            if raw_cookie:
+                jar = cookies.SimpleCookie()
+                try:
+                    jar.load(raw_cookie)
+                    if "rmp_session" in jar:
+                        self.signer.revoke(jar["rmp_session"].value)
+                except Exception:
+                    pass
             self._send_json(
                 200,
                 {"message": "Logged out"},
@@ -1283,9 +1415,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             except Exception:
                 self._send_json(400, {"error": "Malformed webhook JSON"})
                 return
-            event_id = str(wh.get("event_id", "")).strip()
-            order_id = str(wh.get("order_id", "")).strip()
-            payment_id = str(wh.get("payment_id", "")).strip()
+            pay_entity = ((wh.get("payload") or {}).get("payment") or {}).get("entity") or {}
+            event_id = str(self.headers.get("X-Razorpay-Event-Id") or wh.get("event_id") or "").strip()
+            order_id = str(pay_entity.get("order_id") or wh.get("order_id") or "").strip()
+            payment_id = str(pay_entity.get("id") or wh.get("payment_id") or "").strip()
             if not event_id or not order_id:
                 self._send_json(400, {"error": "Missing event_id or order_id"})
                 return
@@ -1519,12 +1652,13 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             test_name = sanitize_text(str(body.get("test_name", "")), 120)
             category = sanitize_text(str(body.get("category", "Pathology")), 60)
-            if not test_name or price_inr < 0:
-                self._send_json(400, {"error": "Valid test_name required."})
+            if not test_name or price_inr < 0 or price_inr > 100000:
+                self._send_json(400, {"error": "Valid test_name and price_inr (0-100000) required."})
                 return
-            rec = self.db.create_lab_test(appt_id, session["username"], test_name, category, price_inr)
+            is_doc = session.get("role") == "doctor"
+            rec = self.db.create_lab_test(appt_id, session["username"], test_name, category, price_inr, enforce_owner=is_doc)
             if not rec:
-                self._send_json(404, {"error": "Appointment not found"})
+                self._send_json(403 if is_doc else 404, {"error": "Appointment not found or not assigned to you"})
                 return
             self.db.log_audit(session["username"], f"LAB_ORDER:{rec['test_code']}", self._client_ip(), 201)
             self._send_json(201, {"message": "Lab test ordered", "lab_test": rec})
@@ -1723,6 +1857,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
 
             role = session.get("role")
+            if role not in ("admin", "doctor", "receptionist"):
+                self.db.log_audit(session["username"], f"UNAUTHORIZED_STAFF_NOTIFY:{appt_id}", self._client_ip(), 403)
+                self._send_json(403, {"error": "Staff authorization required"})
+                return
             doctor_scope = session["username"] if role == "doctor" else None
             appt = self.db.get_appointment_by_id(appt_id, doctor_username=doctor_scope)
             if not appt:
@@ -1765,6 +1903,8 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
     def do_PATCH(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
+        if not self._check_rate_limit("public", self.cfg.rate_limit_public, 60.0):
+            return
 
         if path.startswith("/api/lab/tests/"):
             session = self._get_session()
@@ -1855,6 +1995,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
 
             role = session.get("role")
+            if role not in ("admin", "doctor", "receptionist"):
+                self.db.log_audit(session["username"], f"UNAUTHORIZED_STAFF_APPT_PATCH:{appt_id}", self._client_ip(), 403)
+                self._send_json(403, {"error": "Staff authorization required"})
+                return
             doctor_scope = session["username"] if role == "doctor" else None
             updated = self.db.update_appointment_status(appt_id, new_status, doctor_username=doctor_scope)
             if not updated:

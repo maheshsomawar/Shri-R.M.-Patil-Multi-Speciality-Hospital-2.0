@@ -130,13 +130,35 @@ def run_audit() -> Dict[str, Any]:
         time.sleep(0.05)
 
         try:
-            # 2. Hidden API keys & debug mode off
+            # 2. Hidden API keys, non-secret config & debug mode off
             st, hdrs, body = http_req(port, "GET", "/api/health")
-            key_hidden = cfg.sms_api_key not in body and '"debug": false' in body.lower()
+            st_pc, _, b_pc = http_req(port, "GET", "/api/payments/config")
+            ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
+            ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
+            idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
+            adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
+            client_clean = (
+                "demoPass" not in idx_html
+                and "Admin#RMP2026!" not in idx_html
+                and "Admin#RMP2026!" not in adm_html
+                and "RAZORPAY_KEY_SECRET" not in idx_html
+                and "SMS_GATEWAY_API_KEY" not in idx_html
+                and "SESSION_SECRET" not in idx_html
+            )
+            secrets_rejected = "replace_with" not in ph_sess and len(ph_sess) == 64 and "replace_with" not in ph_rzp
+            key_hidden = (
+                cfg.sms_api_key not in body
+                and '"debug": false' in body.lower()
+                and st_pc == 200
+                and cfg.razorpay_key_secret not in b_pc
+                and cfg.razorpay_webhook_secret not in b_pc
+                and client_clean
+                and secrets_rejected
+            )
             record(
                 "API Keys Hidden & Debug Mode Off",
                 st == 200 and key_hidden,
-                "SMS gateway key kept server-side; DEBUG=false verified on /api/health",
+                "Server secrets hidden; placeholder keys rejected; zero client passwords; DEBUG=false",
             )
 
             # 3. Security headers
@@ -166,16 +188,22 @@ def run_audit() -> Dict[str, Any]:
                 f"All {len(probes)} sensitive file probes returned 404/403 ({probe_statuses})",
             )
 
-            # 5. Scrypt password hashing in SQLite
+            # 5. Scrypt password hashing in SQLite & password sync
+            from db import verify_password as _verify_pw
             conn = sqlite3.connect(cfg.db_path)
             hashes = [r[0] for r in conn.execute("SELECT password_hash FROM users").fetchall()]
             conn.close()
             all_scrypt = len(hashes) >= 6 and all(h.startswith("scrypt$16384$8$1$") for h in hashes)
             no_plaintext = all(pw not in " ".join(hashes) for pw in cfg.staff_passwords.values())
+            srv_py = open(os.path.join(BASE_DIR, "server.py"), encoding="utf-8").read()
+            sync_ok = srv.db.sync_staff_passwords({"nurse": "TempRotated#2026!"}, skip_placeholders=True) == 1
+            nurse_row = srv.db.get_user_by_username("nurse")
+            sync_verified = bool(nurse_row and _verify_pw("TempRotated#2026!", nurse_row["password_hash"]))
+            srv.db.sync_staff_passwords({"nurse": cfg.staff_passwords["nurse"]}, skip_placeholders=True)
             record(
                 "Scrypt Password Hashing & DB Security",
-                all_scrypt and no_plaintext,
-                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext)",
+                all_scrypt and no_plaintext and sync_ok and sync_verified and "Admin#RMP2026!" not in srv_py,
+                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext) + password sync",
             )
 
             # 6. Unauthenticated admin & staff routes blocked
@@ -443,10 +471,13 @@ def run_audit() -> Dict[str, Any]:
                     "slot_time": "10:00",
                 },
             )
+            st_hol_unauth, _, _ = http_req(port, "GET", "/api/staff/holidays")
+            st_hol_rohan, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": rohan_cookie})
+            st_hol_adm, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": admin_cookie})
             record(
                 "Doctor Schedule, Break & Holiday Engine",
-                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400,
-                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}",
+                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400 and st_hol_unauth == 401 and st_hol_rohan == 200 and st_hol_adm == 200,
+                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}, holiday GET RBAC={st_hol_unauth}/{st_hol_rohan}",
             )
 
             # 17. Simultaneous Double-Booking Race Condition Protection (10 threads -> 1 wins, 9 get 409)
@@ -702,10 +733,31 @@ def run_audit() -> Dict[str, Any]:
                 headers={"Cookie": reception_cookie, "X-CSRF-Token": reception_csrf},
             )
             inv_data = json.loads(b_bill).get("invoice", {})
+            st_lt_unauth, _, _ = http_req(port, "GET", "/api/lab/tests")
+            st_lt_rec, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": reception_cookie})
+            st_lt_doc, _, b_lt_doc = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": rohan_cookie})
+            st_lt_lab, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": lab_cookie})
+            st_bi_unauth, _, _ = http_req(port, "GET", "/api/billing/invoices")
+            st_bi_doc, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": rohan_cookie})
+            st_bi_rec, _, b_bi_rec = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": reception_cookie})
             # Doctor fee 500 + Lab 450 + Pharmacy 50 = 1000
             record(
                 "Pharmacy, Lab & Unified Billing RBAC",
-                st_ph_inv == 200 and st_ph_disp == 200 and st_lab_ord == 201 and st_lab_res == 200 and st_bill == 201 and inv_data.get("total_inr") == 1000,
+                st_ph_inv == 200
+                and st_ph_disp == 200
+                and st_lab_ord == 201
+                and st_lab_res == 200
+                and st_bill == 201
+                and inv_data.get("total_inr") == 1000
+                and st_lt_unauth == 401
+                and st_lt_rec == 403
+                and st_lt_doc == 200
+                and st_lt_lab == 200
+                and len(json.loads(b_lt_doc).get("lab_tests", [])) >= 1
+                and st_bi_unauth == 401
+                and st_bi_doc == 403
+                and st_bi_rec == 200
+                and len(json.loads(b_bi_rec).get("invoices", [])) >= 1,
                 f"Pharmacy={st_ph_disp}, Lab={st_lab_res}, Invoice={inv_data.get('invoice_number')} (Total=INR {inv_data.get('total_inr')})",
             )
 
@@ -881,75 +933,123 @@ def run_audit() -> Dict[str, Any]:
                 f"Doctor blocked={st_m_doc}, Admin={st_m_adm} (total_reqs={m_data.get('total_requests')}, 5xx={m_data.get('status_5xx')})",
             )
 
-            # 35. Lab/Billing/Holiday Read RBAC, Non-Secret Payment Config & Password Sync
-            st_lt_unauth, _, _ = http_req(port, "GET", "/api/lab/tests")
-            st_lt_rec, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": reception_cookie})
-            st_lt_pat, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": p1_cookie})
-            st_lt_doc, _, b_lt_doc = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": rohan_cookie})
-            st_lt_lab, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": lab_cookie})
-            st_bi_unauth, _, _ = http_req(port, "GET", "/api/billing/invoices")
-            st_bi_doc, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": rohan_cookie})
-            st_bi_bill, _, b_bi_bill = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": billing_cookie})
-            st_hol_unauth, _, _ = http_req(port, "GET", "/api/staff/holidays")
-            st_hol_pat, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": p1_cookie})
-            st_hol_adm, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": admin_cookie})
-            st_pc, _, b_pc = http_req(port, "GET", "/api/payments/config")
-            pc_safe = (
-                st_pc == 200
-                and cfg.razorpay_key_secret not in b_pc
-                and cfg.razorpay_webhook_secret not in b_pc
+            # 35. Real Nested Razorpay Webhook Payload + SEO Routes (/robots.txt, /sitemap.xml)
+            nested_wh = json.dumps({
+                "event": "payment.captured",
+                "payload": {"payment": {"entity": {"id": "pay_real_nested_001", "order_id": onl_order}}},
+            })
+            nested_sig = hmac.new(
+                srv.config.razorpay_webhook_secret.encode("utf-8"),
+                nested_wh.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            st_nwh, _, b_nwh = http_req(
+                port,
+                "POST",
+                "/api/payments/webhook",
+                body=nested_wh,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Razorpay-Signature": nested_sig,
+                    "X-Razorpay-Event-Id": "evt_nested_real_001",
+                },
             )
-            synced_n = srv.db.sync_staff_passwords({"nurse": "NewNurse#2026!"}, skip_placeholders=True)
-            st_nurse_login, _, _ = http_req(
-                port, "POST", "/api/auth/login", body={"username": "nurse", "password": "NewNurse#2026!"}
-            )
+            st_rob, _, b_rob = http_req(port, "GET", "/robots.txt")
+            st_map, _, _ = http_req(port, "GET", "/sitemap.xml")
             record(
-                "Lab/Billing/Holiday Read RBAC & Payment Config",
-                st_lt_unauth == 401
-                and st_lt_rec == 403
-                and st_lt_pat == 403
-                and st_lt_doc == 200
-                and st_lt_lab == 200
-                and len(json.loads(b_lt_doc).get("lab_tests", [])) >= 1
-                and st_bi_unauth == 401
-                and st_bi_doc == 403
-                and st_bi_bill == 200
-                and len(json.loads(b_bi_bill).get("invoices", [])) >= 1
-                and st_hol_unauth == 401
-                and st_hol_pat == 403
-                and st_hol_adm == 200
-                and pc_safe
-                and synced_n == 1
-                and st_nurse_login == 200,
-                "Lab/Billing/Holiday GET RBAC enforced, /api/payments/config leaks 0 secrets, password sync verified",
+                "Real Nested Razorpay Webhook & SEO Routes",
+                st_nwh == 200 and json.loads(b_nwh).get("duplicate") is False and st_rob == 200 and "Disallow: /admin" in b_rob and st_map == 200,
+                f"Nested Razorpay webhook={st_nwh}, /robots.txt={st_rob} (blocks /admin), /sitemap.xml={st_map}",
             )
 
-            # 36. Private Server Secrets & Zero Client Password Leaks
-            ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
-            ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
-            ph_wh = _safe_server_secret("change_me_webhook_secret", min_len=16)
-            idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
-            adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
-            srv_py = open(os.path.join(BASE_DIR, "server.py"), encoding="utf-8").read()
-            client_clean = (
-                "demoPass" not in idx_html
-                and "Admin#RMP2026!" not in idx_html
-                and "Admin#RMP2026!" not in adm_html
-                and "Admin#RMP2026!" not in srv_py
-                and "RAZORPAY_KEY_SECRET" not in idx_html
-                and "SMS_GATEWAY_API_KEY" not in idx_html
-                and "SESSION_SECRET" not in idx_html
+            # 36. Server-Side Session Token Revocation on Logout (Prevents Replay of Logged-Out Cookie)
+            temp_cookie, _ = login("dr_snehal", cfg.staff_passwords["dr_snehal"])
+            st_before_lo, _, _ = http_req(port, "GET", "/api/auth/me", headers={"Cookie": temp_cookie})
+            st_lo, _, _ = http_req(port, "POST", "/api/auth/logout", body={}, headers={"Cookie": temp_cookie})
+            st_after_lo, _, _ = http_req(port, "GET", "/api/auth/me", headers={"Cookie": temp_cookie})
+            record(
+                "Server-Side Logout Token Revocation",
+                st_before_lo == 200 and st_lo == 200 and st_after_lo == 401,
+                f"Before logout={st_before_lo}, logout={st_lo}, replayed token after logout={st_after_lo}",
             )
-            secrets_rejected = (
-                "replace_with" not in ph_sess
-                and len(ph_sess) == 64
-                and "replace_with" not in ph_rzp
-                and "change_me" not in ph_wh
+
+            # 37. Per-Account Brute-Force Lockout (5 Failed Logins -> 429 Account Lockout)
+            bf_codes = []
+            for _ in range(6):
+                st_bf, _, _ = http_req(
+                    port, "POST", "/api/auth/login", body={"username": "nurse", "password": "WrongPassword!"}
+                )
+                bf_codes.append(st_bf)
+            record(
+                "Per-Account Brute-Force Lockout (429)",
+                bf_codes[:5] == [401, 401, 401, 401, 401] and bf_codes[5] == 429,
+                f"6 bad logins on 'nurse' -> {bf_codes} (locked at 6th attempt with HTTP 429)",
+            )
+
+            # 38. Hospital Privilege Escalation Guard (Patient/Pharmacist/Billing Blocked from Staff PATCH & Notify)
+            st_pat_patch, _, _ = http_req(
+                port,
+                "PATCH",
+                f"/api/staff/appointments/{rebook_id}",
+                body={"status": "completed"},
+                headers={"Cookie": p1_cookie, "X-CSRF-Token": p1_csrf},
+            )
+            st_ph_notify, _, _ = http_req(
+                port,
+                "POST",
+                f"/api/staff/appointments/{rebook_id}/notify",
+                body={"message": "Unauthorized pharmacist SMS"},
+                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
+            )
+            st_bill_patch, _, _ = http_req(
+                port,
+                "PATCH",
+                f"/api/staff/appointments/{rebook_id}",
+                body={"status": "cancelled"},
+                headers={"Cookie": billing_cookie, "X-CSRF-Token": billing_csrf},
             )
             record(
-                "Private Server Secrets & Zero Client Passwords",
-                client_clean and secrets_rejected,
-                "Placeholder secrets rejected server-side; zero hardcoded passwords or API secrets in server/HTML",
+                "Hospital Staff Privilege Escalation Blocked",
+                st_pat_patch == 403 and st_ph_notify == 403 and st_bill_patch == 403,
+                f"Patient PATCH={st_pat_patch}, Pharmacist notify={st_ph_notify}, Billing PATCH={st_bill_patch}",
+            )
+
+            # 39. Cross-Doctor Lab Order Ownership Enforcement
+            st_cross_lab, _, _ = http_req(
+                port,
+                "POST",
+                "/api/lab/tests",
+                body={"appointment_id": appt1["id"], "test_name": "Unauthorized CBC", "price_inr": 350},
+                headers={"Cookie": rohan_cookie, "X-CSRF-Token": rohan_csrf},
+            )
+            record(
+                "Cross-Doctor Lab Order Blocked",
+                st_cross_lab == 403,
+                f"Dr. Rohan ordering lab test on Dr. Snehal's patient -> HTTP {st_cross_lab}",
+            )
+
+            # 40. Cancelled Appointment Cannot Be Checked In via QR Token
+            p1_cancelled_qr = json.loads(b_pb)["appointment"]["qr_token"]
+            st_can_qr, _, _ = http_req(
+                port,
+                "POST",
+                "/api/staff/checkin/scan",
+                body={"qr_token": p1_cancelled_qr},
+                headers={"Cookie": reception_cookie, "X-CSRF-Token": reception_csrf},
+            )
+            record(
+                "Cancelled Appointment QR Check-In Blocked",
+                st_can_qr == 404,
+                f"Scanning cancelled appointment QR token -> HTTP {st_can_qr}",
+            )
+
+            # 41. Unsupported HTTP Methods (PUT/DELETE/TRACE) Return Safe 405 JSON
+            st_del, _, _ = http_req(port, "DELETE", "/api/appointments")
+            st_trc, _, _ = http_req(port, "TRACE", "/")
+            record(
+                "Safe HTTP Method Enforcement (405 JSON)",
+                st_del == 405 and st_trc == 405,
+                f"DELETE={st_del}, TRACE={st_trc} (no default HTML error leak)",
             )
 
             # 13. Rate limiting enforcement

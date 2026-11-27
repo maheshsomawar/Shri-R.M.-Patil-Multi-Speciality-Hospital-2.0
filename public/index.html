@@ -1,128 +1,183 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care, Chakur (Dist. Latur, Maharashtra) — 24x7 emergency, orthopaedics, obstetrics &amp; gynaecology, dental surgery, general medicine, and online OPD booking." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230d9488%27/%3E%3Cpath d=%27M16 7v18M7 16h18%27 stroke=%27white%27 stroke-width=%273.5%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
   <title>Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care — Chakur</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: #071324;
       color: #e2e8f0;
     }
+
     .font-serif-display {
       font-family: 'Playfair Display', Georgia, serif;
     }
+
     .hero-glow {
       background: radial-gradient(circle at 82% 28%, rgba(20, 184, 166, 0.22), transparent 45%),
-                  radial-gradient(circle at 18% 80%, rgba(14, 116, 144, 0.16), transparent 50%),
-                  linear-gradient(135deg, #06101f 0%, #0b1b33 55%, #071726 100%);
+        radial-gradient(circle at 18% 80%, rgba(14, 116, 144, 0.16), transparent 50%),
+        linear-gradient(135deg, #06101f 0%, #0b1b33 55%, #071726 100%);
     }
+
     .teal-panel {
       background: linear-gradient(145deg, #0c5358 0%, #0a2a3b 55%, #071828 100%);
     }
+
     .gold-btn {
       background: linear-gradient(135deg, #d8b54c 0%, #c69d2f 100%);
       color: #071324;
     }
+
     .gold-btn:hover {
       filter: brightness(1.06);
     }
+
     .teal-btn {
       background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
     }
+
     .teal-btn:hover {
       filter: brightness(1.08);
     }
   </style>
 </head>
+
 <body class="antialiased selection:bg-teal-500/30 selection:text-teal-200">
   <!-- Toast Notification -->
-  <a href="#view-public" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-600 focus:text-white focus:font-bold">Skip to main content</a>
-  <div id="toast-container" role="status" aria-live="polite" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+  <a href="#view-public"
+    class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-600 focus:text-white focus:font-bold">Skip
+    to main content</a>
+  <div id="toast-container" role="status" aria-live="polite"
+    class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
 
   <!-- Legal & Privacy Policy Modal (Template — review with legal counsel before go-live) -->
-  <div id="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-modal-title" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+  <div id="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-modal-title"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+      class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
         <h3 id="policy-modal-title" class="font-serif-display text-xl font-bold text-white">Hospital Policy</h3>
-        <button id="policy-modal-close" type="button" aria-label="Close policy dialog" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+        <button id="policy-modal-close" type="button" aria-label="Close policy dialog"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
       </div>
       <div id="policy-modal-body" class="text-xs text-slate-300 leading-relaxed space-y-3"></div>
     </div>
   </div>
 
   <!-- Doctor Send Notification Modal -->
-  <div id="notify-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="notify-modal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="text-[11px] font-bold uppercase tracking-wider text-teal-400">Doctor Patient SMS Notification</div>
-          <h3 id="notify-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Send Notification</h3>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-teal-400">Doctor Patient SMS Notification
+          </div>
+          <h3 id="notify-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Send Notification
+          </h3>
           <p id="notify-modal-meta" class="text-xs text-slate-400 mt-0.5"></p>
         </div>
-        <button id="notify-modal-close" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+        <button id="notify-modal-close" type="button"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
       </div>
 
       <div>
         <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Quick Templates</div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" data-tpl="Your appointment is confirmed. Please arrive 15 minutes before your scheduled slot." class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">Confirmed (15m early)</button>
-          <button type="button" data-tpl="Doctor is ready for your consultation. Please proceed to the OPD counter." class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">OPD Ready Now</button>
-          <button type="button" data-tpl="Please bring your previous prescriptions, lab reports, or X-rays for review." class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">Bring Reports</button>
+          <button type="button"
+            data-tpl="Your appointment is confirmed. Please arrive 15 minutes before your scheduled slot."
+            class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">Confirmed
+            (15m early)</button>
+          <button type="button" data-tpl="Doctor is ready for your consultation. Please proceed to the OPD counter."
+            class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">OPD
+            Ready Now</button>
+          <button type="button" data-tpl="Please bring your previous prescriptions, lab reports, or X-rays for review."
+            class="tpl-btn px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-[11px] text-slate-200">Bring
+            Reports</button>
         </div>
       </div>
 
       <form id="notify-form" class="space-y-3">
         <div>
-          <label for="notify-message-input" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">SMS Message (XSS Sanitized, max 260 chars)</label>
-          <textarea id="notify-message-input" rows="3" maxlength="260" required placeholder="Write a message to send to this patient..." class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
+          <label for="notify-message-input"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">SMS Message (XSS
+            Sanitized, max 260 chars)</label>
+          <textarea id="notify-message-input" rows="3" maxlength="260" required
+            placeholder="Write a message to send to this patient..."
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
         </div>
-        <div id="notify-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
+        <div id="notify-error"
+          class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
         <div class="flex items-center justify-end gap-2 pt-1">
-          <button id="notify-cancel-btn" type="button" class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
-          <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow">Send SMS Notification</button>
+          <button id="notify-cancel-btn" type="button"
+            class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
+          <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow">Send SMS
+            Notification</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Doctor Digital Prescription Modal -->
-  <div id="rx-modal" role="dialog" aria-modal="true" aria-labelledby="rx-modal-title" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="rx-modal" role="dialog" aria-modal="true" aria-labelledby="rx-modal-title"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="text-[11px] font-bold uppercase tracking-wider text-amber-300">Clinical Prescription (Doctor Only)</div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-amber-300">Clinical Prescription (Doctor Only)
+          </div>
           <h3 id="rx-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Write Digital Rx</h3>
           <p id="rx-modal-meta" class="text-xs text-slate-400 mt-0.5"></p>
         </div>
-        <button id="rx-modal-close" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+        <button id="rx-modal-close" type="button"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
       </div>
       <form id="rx-form" class="space-y-3">
         <div>
-          <label for="rx-diagnosis" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Clinical Diagnosis</label>
-          <input id="rx-diagnosis" type="text" maxlength="300" required placeholder="e.g. Acute Viral Fever / Knee Osteoarthritis" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+          <label for="rx-diagnosis"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Clinical
+            Diagnosis</label>
+          <input id="rx-diagnosis" type="text" maxlength="300" required
+            placeholder="e.g. Acute Viral Fever / Knee Osteoarthritis"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
         </div>
         <div>
-          <label for="rx-medicines" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Medicines &amp; Dosage Instructions</label>
-          <textarea id="rx-medicines" rows="3" maxlength="500" required placeholder="e.g. 1. Tab. Paracetamol 650mg — 1 tab SOS after food x 3 days" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
+          <label for="rx-medicines"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Medicines &amp; Dosage
+            Instructions</label>
+          <textarea id="rx-medicines" rows="3" maxlength="500" required
+            placeholder="e.g. 1. Tab. Paracetamol 650mg — 1 tab SOS after food x 3 days"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
         </div>
         <div class="grid sm:grid-cols-2 gap-3">
           <div>
-            <label for="rx-advice" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Advice (Optional)</label>
-            <input id="rx-advice" type="text" maxlength="300" placeholder="e.g. Hydration, rest, review with CBC" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+            <label for="rx-advice"
+              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Advice
+              (Optional)</label>
+            <input id="rx-advice" type="text" maxlength="300" placeholder="e.g. Hydration, rest, review with CBC"
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
           </div>
           <div>
-            <label for="rx-followup" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Follow-Up Date (Optional)</label>
-            <input id="rx-followup" type="date" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-400" />
+            <label for="rx-followup"
+              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Follow-Up Date
+              (Optional)</label>
+            <input id="rx-followup" type="date"
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-400" />
           </div>
         </div>
-        <div id="rx-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
+        <div id="rx-error"
+          class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
         <div class="flex items-center justify-end gap-2 pt-1">
-          <button id="rx-cancel-btn" type="button" class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
+          <button id="rx-cancel-btn" type="button"
+            class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
           <button type="submit" class="gold-btn px-4 py-2 rounded-lg text-xs font-bold shadow">Issue Digital Rx</button>
         </div>
       </form>
@@ -130,29 +185,41 @@
   </div>
 
   <!-- Patient Reschedule Appointment Modal -->
-  <div id="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-[11px] font-bold uppercase tracking-wider text-teal-400">Atomic Slot Swap</div>
-          <h3 id="resched-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Reschedule Appointment</h3>
+          <h3 id="resched-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Reschedule
+            Appointment</h3>
           <p id="resched-modal-meta" class="text-xs text-slate-400 mt-0.5"></p>
         </div>
-        <button id="resched-modal-close" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+        <button id="resched-modal-close" type="button"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
       </div>
       <form id="resched-form" class="space-y-3">
         <div>
-          <label for="resched-date" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">New Appointment Date</label>
-          <input id="resched-date" type="date" required class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400" />
+          <label for="resched-date"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">New Appointment
+            Date</label>
+          <input id="resched-date" type="date" required
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400" />
         </div>
         <div>
-          <label for="resched-slot" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Available Time Slot (IST)</label>
-          <select id="resched-slot" required class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400"></select>
+          <label for="resched-slot"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Available Time Slot
+            (IST)</label>
+          <select id="resched-slot" required
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400"></select>
         </div>
-        <div id="resched-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
+        <div id="resched-error"
+          class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
         <div class="flex items-center justify-end gap-2 pt-1">
-          <button id="resched-cancel-btn" type="button" class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
-          <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow">Confirm Reschedule</button>
+          <button id="resched-cancel-btn" type="button"
+            class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
+          <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow">Confirm
+            Reschedule</button>
         </div>
       </form>
     </div>
@@ -163,31 +230,45 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
       <!-- Brand -->
       <button id="brand-home-btn" type="button" class="flex items-center gap-3 text-left group shrink-0">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-300/30">
+        <div
+          class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-300/30">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
           </svg>
         </div>
         <div>
-          <div class="font-serif-display text-white font-bold text-base sm:text-lg leading-tight group-hover:text-teal-300 transition">Shri R.M. Patil Hospital</div>
-          <div class="text-[10px] tracking-[0.18em] text-[#d8b54c] uppercase font-semibold">Multi Speciality &amp; Trauma Care</div>
+          <div
+            class="font-serif-display text-white font-bold text-base sm:text-lg leading-tight group-hover:text-teal-300 transition">
+            Shri R.M. Patil Hospital</div>
+          <div class="text-[10px] tracking-[0.18em] text-[#d8b54c] uppercase font-semibold">Multi Speciality &amp;
+            Trauma Care</div>
         </div>
       </button>
 
       <!-- Desktop Mode Tabs -->
       <nav class="hidden md:flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
-        <button data-view="public" class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition bg-teal-600 text-white">Hospital Website</button>
-        <button data-view="patient" class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Patient Portal</button>
-        <button data-view="portal" class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Doctor &amp; Staff Portal</button>
-        <button data-view="security" class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Security &amp; Traffic Lab</button>
+        <button data-view="public"
+          class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition bg-teal-600 text-white">Hospital
+          Website</button>
+        <button data-view="patient"
+          class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Patient
+          Portal</button>
+        <button data-view="portal"
+          class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Doctor
+          &amp; Staff Portal</button>
+        <button data-view="security"
+          class="view-tab px-3.5 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">Security
+          &amp; Traffic Lab</button>
       </nav>
 
       <!-- Quick CTA & Mobile Menu -->
       <div class="flex items-center gap-2">
-        <button id="nav-book-btn" type="button" class="gold-btn px-3.5 py-2 rounded-md text-xs font-bold tracking-wider uppercase shadow transition hidden sm:inline-flex items-center gap-1.5">
+        <button id="nav-book-btn" type="button"
+          class="gold-btn px-3.5 py-2 rounded-md text-xs font-bold tracking-wider uppercase shadow transition hidden sm:inline-flex items-center gap-1.5">
           Book Appointment
         </button>
-        <button id="mobile-menu-btn" type="button" aria-label="Toggle Menu" class="md:hidden p-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800">
+        <button id="mobile-menu-btn" type="button" aria-label="Toggle Menu"
+          class="md:hidden p-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -197,10 +278,18 @@
 
     <!-- Mobile Dropdown -->
     <div id="mobile-menu" class="hidden md:hidden border-t border-slate-800 bg-[#071324] px-4 py-3 space-y-2">
-      <button data-view="public" class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold bg-teal-600 text-white">Hospital Website</button>
-      <button data-view="patient" class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Patient Portal (My Bookings &amp; Receipts)</button>
-      <button data-view="portal" class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Doctor &amp; Staff Portal (RBAC)</button>
-      <button data-view="security" class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Security &amp; Traffic Lab</button>
+      <button data-view="public"
+        class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold bg-teal-600 text-white">Hospital
+        Website</button>
+      <button data-view="patient"
+        class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Patient
+        Portal (My Bookings &amp; Receipts)</button>
+      <button data-view="portal"
+        class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Doctor
+        &amp; Staff Portal (RBAC)</button>
+      <button data-view="security"
+        class="view-tab-mobile w-full text-left px-3 py-2 rounded-md text-sm font-semibold text-slate-300 hover:bg-slate-800">Security
+        &amp; Traffic Lab</button>
     </div>
   </header>
 
@@ -210,7 +299,8 @@
     <section class="hero-glow py-16 sm:py-24 border-b border-slate-800/70">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-12 items-center">
         <div class="lg:col-span-7 space-y-6">
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-[#d8b54c]/40 text-[#e4c66a] text-[11px] font-semibold tracking-[0.16em] uppercase">
+          <div
+            class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-[#d8b54c]/40 text-[#e4c66a] text-[11px] font-semibold tracking-[0.16em] uppercase">
             <span class="w-2 h-2 rounded-full bg-[#d8b54c]"></span>
             Multi Speciality &amp; Trauma Care
           </div>
@@ -234,14 +324,17 @@
           </div>
 
           <p class="text-slate-300/90 text-sm sm:text-base leading-relaxed max-w-xl">
-            A trusted multi-speciality hospital providing world-class orthopaedic, obstetric, dental, and general medical care — with 24×7 normal delivery, C-section, bone surgery, and dental surgery services.
+            A trusted multi-speciality hospital providing world-class orthopaedic, obstetric, dental, and general
+            medical care — with 24×7 normal delivery, C-section, bone surgery, and dental surgery services.
           </p>
 
           <div class="flex flex-wrap gap-3 pt-2">
-            <button id="hero-book-btn" type="button" class="teal-btn text-white font-semibold px-6 py-3 rounded-lg text-sm shadow-lg shadow-teal-900/40 inline-flex items-center gap-2 transition">
+            <button id="hero-book-btn" type="button"
+              class="teal-btn text-white font-semibold px-6 py-3 rounded-lg text-sm shadow-lg shadow-teal-900/40 inline-flex items-center gap-2 transition">
               <span>📅</span> Book Appointment
             </button>
-            <a href="tel:02381299133" class="px-6 py-3 rounded-lg text-sm font-semibold border border-slate-600 text-white hover:bg-slate-800/80 inline-flex items-center gap-2 transition">
+            <a href="tel:02381299133"
+              class="px-6 py-3 rounded-lg text-sm font-semibold border border-slate-600 text-white hover:bg-slate-800/80 inline-flex items-center gap-2 transition">
               <span>📞</span> Call Now: 02381-299133
             </a>
           </div>
@@ -255,7 +348,8 @@
           </div>
           <div class="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 text-center backdrop-blur">
             <div class="font-serif-display text-3xl sm:text-4xl font-bold text-teal-400">4+</div>
-            <div class="mt-2 text-[11px] tracking-[0.15em] uppercase text-slate-400 font-semibold">Specialist Doctors</div>
+            <div class="mt-2 text-[11px] tracking-[0.15em] uppercase text-slate-400 font-semibold">Specialist Doctors
+            </div>
           </div>
           <div class="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-6 text-center backdrop-blur">
             <div class="font-serif-display text-3xl sm:text-4xl font-bold text-teal-400">100%</div>
@@ -285,62 +379,80 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center max-w-2xl mx-auto mb-12">
           <div class="text-xs font-bold tracking-[0.2em] uppercase text-teal-700">Our Specialities</div>
-          <h2 class="mt-2 font-serif-display text-3xl sm:text-4xl font-bold text-slate-900">Comprehensive Healthcare Under One Roof</h2>
+          <h2 class="mt-2 font-serif-display text-3xl sm:text-4xl font-bold text-slate-900">Comprehensive Healthcare
+            Under One Roof</h2>
           <p class="mt-3 text-slate-600 text-sm sm:text-base">
-            From emergency trauma care to planned surgeries, our team of specialists is equipped to handle all your medical needs with precision and compassion.
+            From emergency trauma care to planned surgeries, our team of specialists is equipped to handle all your
+            medical needs with precision and compassion.
           </p>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <button type="button" data-dept="Orthopaedics — Dr. Rohan Patil" class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
+          <button type="button" data-dept="Orthopaedics — Dr. Rohan Patil"
+            class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
             <div>
               <div class="text-3xl mb-4">🦴</div>
               <h3 class="font-serif-display text-xl font-bold text-slate-900">Orthopaedics</h3>
               <p class="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Expert diagnosis and surgical treatment of bone, joint, and musculoskeletal conditions. Specialising in fractures, joint replacement, and trauma surgery.
+                Expert diagnosis and surgical treatment of bone, joint, and musculoskeletal conditions. Specialising in
+                fractures, joint replacement, and trauma surgery.
               </p>
             </div>
             <div class="mt-5">
-              <span class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">Bone Surgery</span>
+              <span
+                class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">Bone
+                Surgery</span>
             </div>
           </button>
 
-          <button type="button" data-dept="Obstetrics & Gynaecology — Dr. Rahul Patil" class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
+          <button type="button" data-dept="Obstetrics & Gynaecology — Dr. Rahul Patil"
+            class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
             <div>
               <div class="text-3xl mb-4">🤱</div>
               <h3 class="font-serif-display text-xl font-bold text-slate-900">Obstetrics &amp; Gynaecology</h3>
               <p class="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Complete maternal and women's health care including normal deliveries, C-sections, and comprehensive gynaecological treatments by expert specialists.
+                Complete maternal and women's health care including normal deliveries, C-sections, and comprehensive
+                gynaecological treatments by expert specialists.
               </p>
             </div>
             <div class="mt-5">
-              <span class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">24×7 Delivery</span>
+              <span
+                class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">24×7
+                Delivery</span>
             </div>
           </button>
 
-          <button type="button" data-dept="Dental Surgery — Dr. Manjusha Patil" class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
+          <button type="button" data-dept="Dental Surgery — Dr. Manjusha Patil"
+            class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
             <div>
               <div class="text-3xl mb-4">🦷</div>
               <h3 class="font-serif-display text-xl font-bold text-slate-900">Dental Surgery</h3>
               <p class="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Advanced dental and oral surgical care including extractions, root canals, implants, and corrective dental procedures in a fully equipped dental unit.
+                Advanced dental and oral surgical care including extractions, root canals, implants, and corrective
+                dental procedures in a fully equipped dental unit.
               </p>
             </div>
             <div class="mt-5">
-              <span class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">Dental Surgery</span>
+              <span
+                class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">Dental
+                Surgery</span>
             </div>
           </button>
 
-          <button type="button" data-dept="General Medicine — Dr. Snehal Patil" class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
+          <button type="button" data-dept="General Medicine — Dr. Snehal Patil"
+            class="dept-card text-left bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-teal-400 transition flex flex-col justify-between">
             <div>
               <div class="text-3xl mb-4">🩺</div>
               <h3 class="font-serif-display text-xl font-bold text-slate-900">General Medicine</h3>
               <p class="mt-2.5 text-sm text-slate-600 leading-relaxed">
-                Experienced general physician providing diagnosis and management of a wide range of medical conditions, infections, chronic diseases, and wellness care.
+                Experienced general physician providing diagnosis and management of a wide range of medical conditions,
+                infections, chronic diseases, and wellness care.
               </p>
             </div>
             <div class="mt-5">
-              <span class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">General Physician</span>
+              <span
+                class="inline-block px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 text-[11px] font-bold tracking-wider uppercase">General
+                Physician</span>
             </div>
           </button>
         </div>
@@ -354,14 +466,17 @@
           <div class="text-xs font-bold tracking-[0.2em] uppercase text-[#d8b54c]">Our Specialists</div>
           <h2 class="mt-2 font-serif-display text-3xl sm:text-4xl font-bold text-white">Meet Our Expert Doctors</h2>
           <p class="mt-3 text-slate-400 text-sm sm:text-base">
-            Our team of highly qualified and experienced doctors are committed to delivering personalised, evidence-based healthcare.
+            Our team of highly qualified and experienced doctors are committed to delivering personalised,
+            evidence-based healthcare.
           </p>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">🦴</div>
+              <div
+                class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">
+                🦴</div>
               <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">REG. NO. 2008/10/3539</div>
               <h3 class="mt-1 font-serif-display text-xl font-bold text-white">Dr. Rohan Patil</h3>
               <div class="text-teal-400 text-sm font-medium mt-0.5">Consultant Orthopaedician</div>
@@ -371,14 +486,17 @@
                 Specialised in bone &amp; joint surgery, fracture management, and trauma orthopaedics.
               </p>
             </div>
-            <button type="button" data-dept="Orthopaedics — Dr. Rohan Patil" class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
+            <button type="button" data-dept="Orthopaedics — Dr. Rohan Patil"
+              class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
               Book with Dr. Rohan
             </button>
           </div>
 
           <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">🤱</div>
+              <div
+                class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">
+                🤱</div>
               <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">REG. NO. 2022/12/9582</div>
               <h3 class="mt-1 font-serif-display text-xl font-bold text-white">Dr. Rahul Patil</h3>
               <div class="text-teal-400 text-sm font-medium mt-0.5">Consultant Obgy Specialist</div>
@@ -388,14 +506,17 @@
                 Expert in obstetrics, normal &amp; surgical deliveries, high-risk pregnancies, and gynaecology.
               </p>
             </div>
-            <button type="button" data-dept="Obstetrics & Gynaecology — Dr. Rahul Patil" class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
+            <button type="button" data-dept="Obstetrics & Gynaecology — Dr. Rahul Patil"
+              class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
               Book with Dr. Rahul
             </button>
           </div>
 
           <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">🦷</div>
+              <div
+                class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">
+                🦷</div>
               <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">REG. NO. A-29811</div>
               <h3 class="mt-1 font-serif-display text-xl font-bold text-white">Dr. Manjusha Patil</h3>
               <div class="text-teal-400 text-sm font-medium mt-0.5">Dental Surgeon</div>
@@ -405,14 +526,17 @@
                 Providing comprehensive oral care, dental surgeries, and advanced dental treatments.
               </p>
             </div>
-            <button type="button" data-dept="Dental Surgery — Dr. Manjusha Patil" class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
+            <button type="button" data-dept="Dental Surgery — Dr. Manjusha Patil"
+              class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
               Book with Dr. Manjusha
             </button>
           </div>
 
           <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
             <div>
-              <div class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">🩺</div>
+              <div
+                class="w-12 h-12 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-2xl mb-5">
+                🩺</div>
               <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">REG. NO. A-2018/03/0645</div>
               <h3 class="mt-1 font-serif-display text-xl font-bold text-white">Dr. Snehal Patil</h3>
               <div class="text-teal-400 text-sm font-medium mt-0.5">General Physician</div>
@@ -422,7 +546,8 @@
                 Experienced in managing acute &amp; chronic illnesses, preventive care, and patient wellness.
               </p>
             </div>
-            <button type="button" data-dept="General Medicine — Dr. Snehal Patil" class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
+            <button type="button" data-dept="General Medicine — Dr. Snehal Patil"
+              class="dept-card mt-5 w-full py-2 rounded-lg border border-teal-500/40 text-teal-300 text-xs font-semibold hover:bg-teal-500/15 transition">
               Book with Dr. Snehal
             </button>
           </div>
@@ -433,21 +558,25 @@
     <!-- Why Choose Us -->
     <section id="about" class="bg-[#faf9f5] text-slate-900 py-16 sm:py-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-12 gap-10 items-center">
-        <div class="lg:col-span-6 teal-panel rounded-3xl p-6 sm:p-8 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-4 text-white">
+        <div
+          class="lg:col-span-6 teal-panel rounded-3xl p-6 sm:p-8 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-4 text-white">
           <div class="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
             <div class="text-2xl mb-2">🏆</div>
             <h3 class="font-serif-display font-bold text-lg">Expert Team</h3>
-            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">4 specialist doctors across multiple disciplines</p>
+            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">4 specialist doctors across multiple disciplines
+            </p>
           </div>
           <div class="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
             <div class="text-2xl mb-2">⏰</div>
             <h3 class="font-serif-display font-bold text-lg">24×7 Care</h3>
-            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">Round the clock emergency and delivery services</p>
+            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">Round the clock emergency and delivery services
+            </p>
           </div>
           <div class="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
             <div class="text-2xl mb-2">🔬</div>
             <h3 class="font-serif-display font-bold text-lg">Modern Equipment</h3>
-            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">Well-equipped OT, ICU &amp; diagnostic facilities</p>
+            <p class="mt-1 text-xs text-slate-200/90 leading-relaxed">Well-equipped OT, ICU &amp; diagnostic facilities
+            </p>
           </div>
           <div class="bg-white/10 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
             <div class="text-2xl mb-2">❤️</div>
@@ -458,18 +587,27 @@
 
         <div class="lg:col-span-6 space-y-5">
           <div class="text-xs font-bold tracking-[0.2em] uppercase text-teal-700">Why Choose Us</div>
-          <h2 class="font-serif-display text-3xl sm:text-4xl font-bold text-slate-900">Healthcare You Can Trust &amp; Rely On</h2>
+          <h2 class="font-serif-display text-3xl sm:text-4xl font-bold text-slate-900">Healthcare You Can Trust &amp;
+            Rely On</h2>
           <p class="text-slate-600 text-sm sm:text-base">
-            Shri R.M. Patil Multi Speciality Hospital has been serving the community with integrity and clinical excellence.
+            Shri R.M. Patil Multi Speciality Hospital has been serving the community with integrity and clinical
+            excellence.
           </p>
           <ul class="space-y-3 text-sm text-slate-700">
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>24×7 Normal Delivery &amp; C-Section (Caesarean) facilities</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Bone and orthopaedic surgeries by experienced consultants</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Dental surgery with modern dental equipment</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Accident &amp; trauma care with immediate response</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Qualified medical team with verified registration numbers</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Centrally located for easy access in Chakur region</span></li>
-            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Affiliated pharmacy (Shiv Medical Stores) on premises</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>24×7 Normal
+                Delivery &amp; C-Section (Caesarean) facilities</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Bone and
+                orthopaedic surgeries by experienced consultants</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Dental surgery with
+                modern dental equipment</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Accident &amp;
+                trauma care with immediate response</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Qualified medical
+                team with verified registration numbers</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Centrally located
+                for easy access in Chakur region</span></li>
+            <li class="flex items-start gap-2.5"><span class="text-teal-600 font-bold">✓</span><span>Affiliated pharmacy
+                (Shiv Medical Stores) on premises</span></li>
           </ul>
         </div>
       </div>
@@ -483,7 +621,9 @@
           <!-- Contact Info -->
           <div class="lg:col-span-5 space-y-6">
             <div class="flex items-start gap-4">
-              <div class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">📍</div>
+              <div
+                class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">
+                📍</div>
               <div>
                 <div class="text-xs font-bold tracking-wider uppercase text-[#d8b54c]">Address</div>
                 <p class="mt-1 text-sm text-slate-300 leading-relaxed">
@@ -495,7 +635,9 @@
             </div>
 
             <div class="flex items-start gap-4">
-              <div class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">📞</div>
+              <div
+                class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">
+                📞</div>
               <div>
                 <div class="text-xs font-bold tracking-wider uppercase text-[#d8b54c]">Phone</div>
                 <p class="mt-1 text-sm text-slate-300">02381-299133<br />94217 62599</p>
@@ -503,15 +645,20 @@
             </div>
 
             <div class="flex items-start gap-4">
-              <div class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">🕒</div>
+              <div
+                class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">
+                🕒</div>
               <div>
                 <div class="text-xs font-bold tracking-wider uppercase text-[#d8b54c]">Emergency Hours</div>
-                <p class="mt-1 text-sm text-slate-300">24 Hours · 7 Days a Week<br />Emergency &amp; Trauma always open</p>
+                <p class="mt-1 text-sm text-slate-300">24 Hours · 7 Days a Week<br />Emergency &amp; Trauma always open
+                </p>
               </div>
             </div>
 
             <div class="flex items-start gap-4">
-              <div class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">💊</div>
+              <div
+                class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center shrink-0 text-lg">
+                💊</div>
               <div>
                 <div class="text-xs font-bold tracking-wider uppercase text-[#d8b54c]">In-House Pharmacy</div>
                 <p class="mt-1 text-sm text-slate-300">Shiv Medical Stores<br />Mo. 84213 07374</p>
@@ -523,7 +670,8 @@
           <div class="lg:col-span-7 bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
               <h3 class="font-serif-display text-2xl font-bold text-white">Request an Appointment</h3>
-              <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              <span
+                class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                 🔒 Instant SMS Confirmation + XSS Protected
               </span>
             </div>
@@ -531,47 +679,71 @@
             <form id="appointment-form" class="space-y-4" novalidate>
               <div class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label for="first-name" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">First Name</label>
-                  <input id="first-name" type="text" required maxlength="60" placeholder="e.g. Aarav" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+                  <label for="first-name"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">First
+                    Name</label>
+                  <input id="first-name" type="text" required maxlength="60" placeholder="e.g. Aarav"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
                 </div>
                 <div>
-                  <label for="last-name" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Last Name</label>
-                  <input id="last-name" type="text" required maxlength="60" placeholder="e.g. Deshmukh" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+                  <label for="last-name"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Last
+                    Name</label>
+                  <input id="last-name" type="text" required maxlength="60" placeholder="e.g. Deshmukh"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
                 </div>
               </div>
 
               <div class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label for="mobile-number" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mobile Number (SMS Confirmation)</label>
-                  <input id="mobile-number" type="tel" required maxlength="12" placeholder="e.g. 9876543210" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+                  <label for="mobile-number"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mobile Number
+                    (SMS Confirmation)</label>
+                  <input id="mobile-number" type="tel" required maxlength="12" placeholder="e.g. 9876543210"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
                 </div>
                 <div>
-                  <label for="appointment-date" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Preferred Appointment Date</label>
-                  <input id="appointment-date" type="date" required value="2026-11-26" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400" />
+                  <label for="appointment-date"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Preferred
+                    Appointment Date</label>
+                  <input id="appointment-date" type="date" required value="2026-11-26"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400" />
                 </div>
               </div>
 
               <div>
                 <div class="flex items-center justify-between mb-1.5">
-                  <label for="department-select" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Department &amp; Doctor</label>
+                  <label for="department-select"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Department &amp;
+                    Doctor</label>
                   <span id="doctor-fee-badge" class="text-[11px] font-bold text-[#d8b54c]">Consultation Fee: ₹300</span>
                 </div>
-                <select id="department-select" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400">
-                  <option value="General Medicine — Dr. Snehal Patil">General Medicine — Dr. Snehal Patil (₹300)</option>
+                <select id="department-select"
+                  class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400">
+                  <option value="General Medicine — Dr. Snehal Patil">General Medicine — Dr. Snehal Patil (₹300)
+                  </option>
                   <option value="Orthopaedics — Dr. Rohan Patil">Orthopaedics — Dr. Rohan Patil (₹500)</option>
-                  <option value="Obstetrics & Gynaecology — Dr. Rahul Patil">Obstetrics &amp; Gynaecology — Dr. Rahul Patil (₹500)</option>
-                  <option value="Dental Surgery — Dr. Manjusha Patil">Dental Surgery — Dr. Manjusha Patil (₹400)</option>
+                  <option value="Obstetrics & Gynaecology — Dr. Rahul Patil">Obstetrics &amp; Gynaecology — Dr. Rahul
+                    Patil (₹500)</option>
+                  <option value="Dental Surgery — Dr. Manjusha Patil">Dental Surgery — Dr. Manjusha Patil (₹400)
+                  </option>
                 </select>
               </div>
 
               <div class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label for="slot-time-select" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Available Time Slot (IST · Breaks Excluded)</label>
-                  <select id="slot-time-select" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400"></select>
+                  <label for="slot-time-select"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Available
+                    Time Slot (IST · Breaks Excluded)</label>
+                  <select id="slot-time-select"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400"></select>
                 </div>
                 <div>
-                  <label for="payment-method-select" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Payment Method</label>
-                  <select id="payment-method-select" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400">
+                  <label for="payment-method-select"
+                    class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Payment
+                    Method</label>
+                  <select id="payment-method-select"
+                    class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-400">
                     <option value="pay_at_hospital">Pay at Hospital (Instant Confirmation)</option>
                     <option value="online_razorpay">Online Payment (Razorpay Test Mode)</option>
                   </select>
@@ -579,14 +751,22 @@
               </div>
 
               <div>
-                <label for="patient-message" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Message / Symptoms (Optional — XSS automatically sanitized)</label>
-                <textarea id="patient-message" rows="3" maxlength="300" placeholder="Brief reason for visit" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
+                <label for="patient-message"
+                  class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Message /
+                  Symptoms (Optional — XSS automatically sanitized)</label>
+                <textarea id="patient-message" rows="3" maxlength="300" placeholder="Brief reason for visit"
+                  class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"></textarea>
               </div>
 
-              <div id="form-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200"></div>
-              <div id="form-success" class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/40 p-4 text-xs text-emerald-100 space-y-2"></div>
+              <div id="form-error"
+                class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200">
+              </div>
+              <div id="form-success"
+                class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/40 p-4 text-xs text-emerald-100 space-y-2">
+              </div>
 
-              <button type="submit" class="w-full teal-btn text-white font-semibold py-3 rounded-lg text-sm shadow-lg transition flex items-center justify-center gap-2">
+              <button type="submit"
+                class="w-full teal-btn text-white font-semibold py-3 rounded-lg text-sm shadow-lg transition flex items-center justify-center gap-2">
                 <span>📅</span> Book Appointment &amp; Send Confirmation SMS
               </button>
             </form>
@@ -600,16 +780,22 @@
   <section id="view-patient" class="view-section hidden py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <div class="text-xs font-bold tracking-[0.18em] uppercase text-teal-400">Patient Privacy · Receipts · Prescriptions</div>
+        <div class="text-xs font-bold tracking-[0.18em] uppercase text-teal-400">Patient Privacy · Receipts ·
+          Prescriptions</div>
         <h2 class="font-serif-display text-3xl font-bold text-white mt-1">Patient Portal</h2>
-        <p class="text-sm text-slate-400 mt-1">Register or sign in with your mobile number to view your appointments, cancel bookings, print official hospital letterhead receipts/prescriptions, and manage DPDP privacy consent.</p>
+        <p class="text-sm text-slate-400 mt-1">Register or sign in with your mobile number to view your appointments,
+          cancel bookings, print official hospital letterhead receipts/prescriptions, and manage DPDP privacy consent.
+        </p>
       </div>
-      <div id="patient-session-bar" class="hidden items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
+      <div id="patient-session-bar"
+        class="hidden items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
         <div>
           <div id="pat-name-hdr" class="text-sm font-bold text-white"></div>
           <div id="pat-code-hdr" class="text-[11px] font-mono text-teal-400"></div>
         </div>
-        <button id="patient-logout-btn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/50 text-xs font-semibold text-slate-200 border border-slate-700">Sign Out</button>
+        <button id="patient-logout-btn" type="button"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/50 text-xs font-semibold text-slate-200 border border-slate-700">Sign
+          Out</button>
       </div>
     </div>
 
@@ -619,15 +805,22 @@
         <h3 class="font-serif-display text-xl font-bold text-white">Existing Patient Sign-In</h3>
         <form id="patient-login-form" class="space-y-3">
           <div>
-            <label for="pat-login-mobile" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Registered Mobile Number</label>
-            <input id="pat-login-mobile" type="tel" required placeholder="10-digit mobile" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
+            <label for="pat-login-mobile"
+              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Registered Mobile
+              Number</label>
+            <input id="pat-login-mobile" type="tel" required placeholder="10-digit mobile"
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
           </div>
           <div>
-            <label for="pat-login-pass" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password</label>
-            <input id="pat-login-pass" type="password" required placeholder="••••••••" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
+            <label for="pat-login-pass"
+              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password</label>
+            <input id="pat-login-pass" type="password" required placeholder="••••••••"
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
           </div>
-          <div id="pat-login-err" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
-          <button type="submit" class="w-full teal-btn py-2.5 rounded-lg text-xs font-bold text-white">Sign In to Patient Portal</button>
+          <div id="pat-login-err"
+            class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
+          <button type="submit" class="w-full teal-btn py-2.5 rounded-lg text-xs font-bold text-white">Sign In to
+            Patient Portal</button>
         </form>
       </div>
 
@@ -636,30 +829,44 @@
         <form id="patient-register-form" class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label for="pat-reg-first" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">First Name</label>
-              <input id="pat-reg-first" type="text" required placeholder="First name" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
+              <label for="pat-reg-first"
+                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">First Name</label>
+              <input id="pat-reg-first" type="text" required placeholder="First name"
+                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
             </div>
             <div>
-              <label for="pat-reg-last" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Last Name</label>
-              <input id="pat-reg-last" type="text" required placeholder="Last name" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
+              <label for="pat-reg-last"
+                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Last Name</label>
+              <input id="pat-reg-last" type="text" required placeholder="Last name"
+                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label for="pat-reg-mobile" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mobile (10 digits)</label>
-              <input id="pat-reg-mobile" type="tel" required placeholder="98xxxxxxxx" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
+              <label for="pat-reg-mobile"
+                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mobile (10
+                digits)</label>
+              <input id="pat-reg-mobile" type="tel" required placeholder="98xxxxxxxx"
+                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
             </div>
             <div>
-              <label for="pat-reg-blood" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Blood Group (Optional)</label>
-              <input id="pat-reg-blood" type="text" placeholder="e.g. O+" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
+              <label for="pat-reg-blood"
+                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Blood Group
+                (Optional)</label>
+              <input id="pat-reg-blood" type="text" placeholder="e.g. O+"
+                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
             </div>
           </div>
           <div>
-            <label for="pat-reg-pass" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password (8+ chars, letter &amp; number)</label>
-            <input id="pat-reg-pass" type="password" required placeholder="e.g. Patient#2026" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
+            <label for="pat-reg-pass"
+              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password (8+ chars,
+              letter &amp; number)</label>
+            <input id="pat-reg-pass" type="password" required placeholder="e.g. Patient#2026"
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
           </div>
           <div id="pat-reg-msg" class="hidden rounded-lg px-3 py-2 text-xs"></div>
-          <button type="submit" class="w-full gold-btn py-2.5 rounded-lg text-xs font-bold">Create Patient Account</button>
+          <button type="submit" class="w-full gold-btn py-2.5 rounded-lg text-xs font-bold">Create Patient
+            Account</button>
         </form>
       </div>
     </div>
@@ -669,7 +876,8 @@
       <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h3 class="font-serif-display text-xl font-bold text-white">My Appointments &amp; Official Receipts</h3>
-          <button id="pat-refresh-btn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-teal-300 hover:bg-slate-700">Refresh</button>
+          <button id="pat-refresh-btn" type="button"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-teal-300 hover:bg-slate-700">Refresh</button>
         </div>
         <div id="pat-appts-list" class="space-y-2.5 text-xs"></div>
       </div>
@@ -682,20 +890,29 @@
 
         <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
           <h3 class="font-serif-display text-lg font-bold text-white">DPDP Privacy &amp; Consent Controls</h3>
-          <p class="text-xs text-slate-400">Manage optional SMS reminder consent or submit a data access, correction, or erasure request.</p>
+          <p class="text-xs text-slate-400">Manage optional SMS reminder consent or submit a data access, correction, or
+            erasure request.</p>
           <div class="flex flex-wrap gap-2">
-            <button id="pat-consent-grant" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-600/25 border border-emerald-500/40 text-emerald-200 text-xs font-semibold">Grant SMS Consent</button>
-            <button id="pat-consent-withdraw" type="button" class="px-3 py-1.5 rounded-lg bg-amber-600/25 border border-amber-500/40 text-amber-200 text-xs font-semibold">Withdraw SMS Consent</button>
+            <button id="pat-consent-grant" type="button"
+              class="px-3 py-1.5 rounded-lg bg-emerald-600/25 border border-emerald-500/40 text-emerald-200 text-xs font-semibold">Grant
+              SMS Consent</button>
+            <button id="pat-consent-withdraw" type="button"
+              class="px-3 py-1.5 rounded-lg bg-amber-600/25 border border-amber-500/40 text-amber-200 text-xs font-semibold">Withdraw
+              SMS Consent</button>
           </div>
           <div class="grid sm:grid-cols-12 gap-2 pt-1">
-            <select id="pat-privacy-type" class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white">
+            <select id="pat-privacy-type"
+              class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white">
               <option value="access">Data Access</option>
               <option value="correction">Correction</option>
               <option value="erasure">Erasure</option>
               <option value="consent_withdrawal">Consent Withdrawal</option>
             </select>
-            <input id="pat-privacy-details" type="text" maxlength="300" placeholder="Optional details..." class="sm:col-span-5 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
-            <button id="pat-privacy-erasure" type="button" class="sm:col-span-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold">Submit Request</button>
+            <input id="pat-privacy-details" type="text" maxlength="300" placeholder="Optional details..."
+              class="sm:col-span-5 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+            <button id="pat-privacy-erasure" type="button"
+              class="sm:col-span-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold">Submit
+              Request</button>
           </div>
           <div id="pat-privacy-status" class="text-xs text-teal-300 font-mono"></div>
           <div id="pat-privacy-list" class="space-y-1.5 max-h-32 overflow-y-auto text-[11px]"></div>
@@ -708,77 +925,101 @@
   <section id="view-portal" class="view-section hidden py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
     <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
       <div>
-        <div class="text-xs font-bold tracking-[0.18em] uppercase text-teal-400">Doctor Security Login · RBAC · Daily &amp; Monthly Analytics</div>
+        <div class="text-xs font-bold tracking-[0.18em] uppercase text-teal-400">Doctor Security Login · RBAC · Daily
+          &amp; Monthly Analytics</div>
         <h2 class="font-serif-display text-3xl font-bold text-white mt-1">Doctor &amp; Staff Portal</h2>
-        <p class="text-sm text-slate-400 mt-1">Each doctor logs in securely to view only their assigned patients, track daily &amp; monthly appointment dates, and send SMS notifications.</p>
+        <p class="text-sm text-slate-400 mt-1">Each doctor logs in securely to view only their assigned patients, track
+          daily &amp; monthly appointment dates, and send SMS notifications.</p>
       </div>
-      <div id="session-badge" class="hidden items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
+      <div id="session-badge"
+        class="hidden items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
         <div>
           <div id="session-user-name" class="text-sm font-bold text-white"></div>
           <div id="session-user-role" class="text-[11px] text-teal-400 font-mono uppercase"></div>
         </div>
-        <button id="logout-btn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/50 text-xs font-semibold text-slate-200 border border-slate-700 transition">Sign Out</button>
+        <button id="logout-btn" type="button"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/50 text-xs font-semibold text-slate-200 border border-slate-700 transition">Sign
+          Out</button>
       </div>
     </div>
 
     <!-- Login Box (shown when logged out) -->
-    <div id="portal-login-card" class="max-w-3xl mx-auto bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+    <div id="portal-login-card"
+      class="max-w-3xl mx-auto bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
       <div>
         <h3 class="font-serif-display text-xl font-bold text-white">Secure Doctor &amp; Staff Sign-In</h3>
-        <p class="text-xs text-slate-400 mt-1">Protected by salted <code class="text-teal-300">scrypt</code> hashing, brute-force lockout, signed <code class="text-teal-300">HttpOnly; SameSite=Strict</code> cookies, and per-session CSRF tokens.</p>
+        <p class="text-xs text-slate-400 mt-1">Protected by salted <code class="text-teal-300">scrypt</code> hashing,
+          brute-force lockout, signed <code class="text-teal-300">HttpOnly; SameSite=Strict</code> cookies, and
+          per-session CSRF tokens.</p>
       </div>
 
       <form id="staff-login-form" class="grid sm:grid-cols-12 gap-3 items-end">
         <div class="sm:col-span-5">
-          <label for="login-username" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Username</label>
-          <input id="login-username" type="text" required placeholder="e.g. dr_rohan" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+          <label for="login-username"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Username</label>
+          <input id="login-username" type="text" required placeholder="e.g. dr_rohan"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
         </div>
         <div class="sm:col-span-4">
-          <label for="login-password" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password</label>
-          <input id="login-password" type="password" required placeholder="••••••••" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
+          <label for="login-password"
+            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password</label>
+          <input id="login-password" type="password" required placeholder="••••••••"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-400" />
         </div>
         <div class="sm:col-span-3">
-          <button type="submit" class="w-full teal-btn py-2.5 rounded-lg text-xs font-bold text-white shadow">Sign In Securely</button>
+          <button type="submit" class="w-full teal-btn py-2.5 rounded-lg text-xs font-bold text-white shadow">Sign In
+            Securely</button>
         </div>
       </form>
-      <div id="login-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200"></div>
+      <div id="login-error"
+        class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200"></div>
 
       <div id="demo-role-box" class="border-t border-slate-800 pt-5">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">One-Click Offline Preview Access (Hidden When Live Server Active)</div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">One-Click Offline Preview
+          Access (Hidden When Live Server Active)</div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          <button type="button" data-role-user="dr_rohan" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
+          <button type="button" data-role-user="dr_rohan"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
             <div class="text-sm font-bold text-white">Dr. Rohan Patil</div>
             <div class="text-[11px] text-teal-400">Orthopaedics ONLY</div>
           </button>
-          <button type="button" data-role-user="dr_rahul" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
+          <button type="button" data-role-user="dr_rahul"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
             <div class="text-sm font-bold text-white">Dr. Rahul Patil</div>
             <div class="text-[11px] text-teal-400">Obgy ONLY</div>
           </button>
-          <button type="button" data-role-user="dr_manjusha" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
+          <button type="button" data-role-user="dr_manjusha"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
             <div class="text-sm font-bold text-white">Dr. Manjusha Patil</div>
             <div class="text-[11px] text-teal-400">Dental Surgery ONLY</div>
           </button>
-          <button type="button" data-role-user="dr_snehal" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
+          <button type="button" data-role-user="dr_snehal"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
             <div class="text-sm font-bold text-white">Dr. Snehal Patil</div>
             <div class="text-[11px] text-teal-400">General Medicine ONLY</div>
           </button>
-          <button type="button" data-role-user="reception" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-sky-400 transition">
+          <button type="button" data-role-user="reception"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-sky-400 transition">
             <div class="text-sm font-bold text-white">Front Desk Reception</div>
             <div class="text-[11px] text-sky-400">All Bookings (Admin 403)</div>
           </button>
-          <button type="button" data-role-user="pharmacist" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-emerald-400 transition">
+          <button type="button" data-role-user="pharmacist"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-emerald-400 transition">
             <div class="text-sm font-bold text-white">Shiv Medical Pharmacist</div>
             <div class="text-[11px] text-emerald-400">Pharmacy Stock &amp; Dispense</div>
           </button>
-          <button type="button" data-role-user="lab_tech" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-purple-400 transition">
+          <button type="button" data-role-user="lab_tech"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-purple-400 transition">
             <div class="text-sm font-bold text-white">Pathology Lab Tech</div>
             <div class="text-[11px] text-purple-400">Lab Reports &amp; Samples</div>
           </button>
-          <button type="button" data-role-user="billing_desk" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-rose-400 transition">
+          <button type="button" data-role-user="billing_desk"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-rose-400 transition">
             <div class="text-sm font-bold text-white">Hospital Billing Officer</div>
             <div class="text-[11px] text-rose-400">Invoices &amp; Refunds</div>
           </button>
-          <button type="button" data-role-user="admin" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-[#d8b54c] transition">
+          <button type="button" data-role-user="admin"
+            class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-[#d8b54c] transition">
             <div class="text-sm font-bold text-white">Hospital Administrator</div>
             <div class="text-[11px] text-[#d8b54c]">All 7 Roles + Audit Logs</div>
           </button>
@@ -786,7 +1027,9 @@
       </div>
 
       <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-        <strong>Zero-leak protection active:</strong> Unauthenticated calls to <code class="font-mono">/api/admin/audit</code>, <code class="font-mono">/api/staff/appointments</code>, or <code class="font-mono">/api/staff/appointments/summary</code> return <strong>HTTP 401 Unauthorized</strong>.
+        <strong>Zero-leak protection active:</strong> Unauthenticated calls to <code
+          class="font-mono">/api/admin/audit</code>, <code class="font-mono">/api/staff/appointments</code>, or <code
+          class="font-mono">/api/staff/appointments/summary</code> return <strong>HTTP 401 Unauthorized</strong>.
       </div>
     </div>
 
@@ -813,7 +1056,8 @@
           <div class="text-[11px] uppercase tracking-wider text-slate-400">Session Security (CSRF + RBAC)</div>
           <div id="dash-csrf-token" class="text-[11px] font-mono text-emerald-300 mt-1 truncate"></div>
           <div id="dash-admin-status" class="text-xs font-bold mt-1"></div>
-          <button id="test-admin-route-btn" type="button" class="mt-1 text-[11px] underline text-teal-300 hover:text-teal-200">Test GET /api/admin/audit</button>
+          <button id="test-admin-route-btn" type="button"
+            class="mt-1 text-[11px] underline text-teal-300 hover:text-teal-200">Test GET /api/admin/audit</button>
         </div>
       </div>
 
@@ -822,18 +1066,22 @@
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 class="font-serif-display text-lg font-bold text-white">Daily &amp; Monthly Appointment Dates</h3>
-            <p class="text-xs text-slate-400">Pick any date or month to inspect your appointment schedule (strictly isolated to your role).</p>
+            <p class="text-xs text-slate-400">Pick any date or month to inspect your appointment schedule (strictly
+              isolated to your role).</p>
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
             <label class="text-[11px] text-slate-400 flex items-center gap-1.5">
               <span>Day:</span>
-              <input id="portal-date-picker" type="date" value="2026-11-26" class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+              <input id="portal-date-picker" type="date" value="2026-11-26"
+                class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
             </label>
             <label class="text-[11px] text-slate-400 flex items-center gap-1.5">
               <span>Month:</span>
-              <input id="portal-month-picker" type="month" value="2026-11" class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+              <input id="portal-month-picker" type="month" value="2026-11"
+                class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
             </label>
-            <select id="portal-range-filter" class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200">
+            <select id="portal-range-filter"
+              class="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200">
               <option value="all">Show All Dates</option>
               <option value="day">Only Selected Day</option>
               <option value="month">Only Selected Month</option>
@@ -846,13 +1094,16 @@
       </div>
 
       <!-- Newly Issued Prescription Printable Banner -->
-      <div id="rx-issued-banner" class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/40 px-4 py-3 text-xs text-emerald-100 flex flex-wrap items-center justify-between gap-2"></div>
+      <div id="rx-issued-banner"
+        class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/40 px-4 py-3 text-xs text-emerald-100 flex flex-wrap items-center justify-between gap-2">
+      </div>
 
       <!-- Appointments Table -->
       <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <h3 class="font-serif-display text-lg font-bold text-white">Patient Appointments (Scoped by Doctor)</h3>
-          <select id="portal-status-filter" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-200">
+          <select id="portal-status-filter"
+            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-200">
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
@@ -883,9 +1134,12 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="font-serif-display text-lg font-bold text-white">Sent Patient SMS &amp; Notifications Log</h3>
-            <p class="text-xs text-slate-400">Includes automatic booking confirmations and doctor notifications (scoped strictly to your patients).</p>
+            <p class="text-xs text-slate-400">Includes automatic booking confirmations and doctor notifications (scoped
+              strictly to your patients).</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">SMS Audit Trail</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">SMS
+            Audit Trail</span>
         </div>
         <div id="portal-notifications-list" class="space-y-2 max-h-56 overflow-y-auto text-xs"></div>
       </div>
@@ -894,14 +1148,20 @@
       <div id="qr-checkin-panel" class="hidden bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="font-serif-display text-lg font-bold text-white">Reception QR Code Check-In &amp; Queue Tokens</h3>
-            <p class="text-xs text-slate-400">Enter or scan a patient's non-sensitive <code class="text-teal-300">QR-...</code> token to verify on the backend and issue a daily queue token.</p>
+            <h3 class="font-serif-display text-lg font-bold text-white">Reception QR Code Check-In &amp; Queue Tokens
+            </h3>
+            <p class="text-xs text-slate-400">Enter or scan a patient's non-sensitive <code
+                class="text-teal-300">QR-...</code> token to verify on the backend and issue a daily queue token.</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Zero PII in QR</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Zero
+            PII in QR</span>
         </div>
         <div class="flex flex-wrap gap-2">
-          <input id="qr-scan-input" type="text" placeholder="e.g. QR-7A2F109C44B1" class="flex-1 min-w-[200px] rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-xs font-mono text-white placeholder-slate-500" />
-          <button id="qr-scan-btn" type="button" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white">Verify &amp; Check In</button>
+          <input id="qr-scan-input" type="text" placeholder="e.g. QR-7A2F109C44B1"
+            class="flex-1 min-w-[200px] rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-xs font-mono text-white placeholder-slate-500" />
+          <button id="qr-scan-btn" type="button"
+            class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white">Verify &amp; Check In</button>
         </div>
         <div id="qr-scan-result" class="hidden rounded-xl bg-slate-950/80 border border-slate-800 p-3 text-xs"></div>
       </div>
@@ -913,7 +1173,9 @@
             <h3 class="font-serif-display text-lg font-bold text-white">Shiv Medical Stores — Pharmacy Inventory</h3>
             <p class="text-xs text-slate-400">Atomic stock tracking with automatic low-stock reorder alerts.</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Pharmacist / Admin</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Pharmacist
+            / Admin</span>
         </div>
         <div id="pharmacy-grid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
@@ -923,15 +1185,24 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="font-serif-display text-lg font-bold text-white">Pathology &amp; Diagnostics Lab</h3>
-            <p class="text-xs text-slate-400">Doctors order tests for patients; Laboratory Technicians update sample status &amp; report summaries.</p>
+            <p class="text-xs text-slate-400">Doctors order tests for patients; Laboratory Technicians update sample
+              status &amp; report summaries.</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">Doctor / Lab Tech / Admin</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">Doctor
+            / Lab Tech / Admin</span>
         </div>
-        <form id="lab-order-form" class="hidden grid sm:grid-cols-12 gap-2.5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
-          <select id="lab-order-appt" required class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
-          <input id="lab-order-name" type="text" required maxlength="120" placeholder="Test name (e.g. Complete Blood Count)" class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-          <input id="lab-order-price" type="number" min="0" value="350" class="sm:col-span-2 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-          <button type="submit" class="sm:col-span-2 teal-btn px-3 py-2 rounded-lg text-xs font-bold text-white">Order Test</button>
+        <form id="lab-order-form"
+          class="hidden grid sm:grid-cols-12 gap-2.5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+          <select id="lab-order-appt" required
+            class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
+          <input id="lab-order-name" type="text" required maxlength="120"
+            placeholder="Test name (e.g. Complete Blood Count)"
+            class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+          <input id="lab-order-price" type="number" min="0" value="350"
+            class="sm:col-span-2 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+          <button type="submit" class="sm:col-span-2 teal-btn px-3 py-2 rounded-lg text-xs font-bold text-white">Order
+            Test</button>
         </form>
         <div id="lab-tests-list" class="space-y-2 text-xs"></div>
       </div>
@@ -941,24 +1212,35 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="font-serif-display text-lg font-bold text-white">Unified Billing, Invoices &amp; Refunds</h3>
-            <p class="text-xs text-slate-400">Combine consultation, lab tests, and pharmacy charges into <code class="text-teal-300">INV-...</code> invoices or process <code class="text-amber-300">RFD-...</code> refunds.</p>
+            <p class="text-xs text-slate-400">Combine consultation, lab tests, and pharmacy charges into <code
+                class="text-teal-300">INV-...</code> invoices or process <code class="text-amber-300">RFD-...</code>
+              refunds.</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">Billing / Reception / Admin</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">Billing
+            / Reception / Admin</span>
         </div>
         <div class="grid md:grid-cols-2 gap-4">
           <form id="billing-invoice-form" class="space-y-2.5 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
             <div class="text-xs font-bold text-teal-300">Generate Unified Invoice</div>
-            <select id="bill-inv-appt" required class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
+            <select id="bill-inv-appt" required
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
             <div class="flex gap-2">
-              <input id="bill-inv-pharm" type="number" min="0" value="0" placeholder="Pharmacy INR" class="flex-1 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-              <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white">Create Invoice</button>
+              <input id="bill-inv-pharm" type="number" min="0" value="0" placeholder="Pharmacy INR"
+                class="flex-1 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+              <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white">Create
+                Invoice</button>
             </div>
           </form>
-          <form id="billing-refund-form" class="hidden space-y-2.5 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
+          <form id="billing-refund-form"
+            class="hidden space-y-2.5 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
             <div class="text-xs font-bold text-amber-300">Process Refund (Billing / Admin Only)</div>
-            <select id="bill-rfd-appt" required class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
+            <select id="bill-rfd-appt" required
+              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white"></select>
             <div class="flex gap-2">
-              <input id="bill-rfd-reason" type="text" required maxlength="200" placeholder="Refund reason (e.g. Cancelled before OPD)" class="flex-1 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+              <input id="bill-rfd-reason" type="text" required maxlength="200"
+                placeholder="Refund reason (e.g. Cancelled before OPD)"
+                class="flex-1 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
               <button type="submit" class="gold-btn px-4 py-2 rounded-lg text-xs font-bold">Issue Refund</button>
             </div>
           </form>
@@ -971,20 +1253,29 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="font-serif-display text-lg font-bold text-white">OPD Leave &amp; Holiday Schedule</h3>
-            <p class="text-xs text-slate-400">Blocked dates automatically disable OPD booking slots for that doctor in SQLite.</p>
+            <p class="text-xs text-slate-400">Blocked dates automatically disable OPD booking slots for that doctor in
+              SQLite.</p>
           </div>
-          <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Doctor / Admin</span>
+          <span
+            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Doctor
+            / Admin</span>
         </div>
-        <form id="staff-holiday-form" class="grid sm:grid-cols-12 gap-2.5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
-          <select id="staff-hol-doc" class="hidden sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white">
+        <form id="staff-holiday-form"
+          class="grid sm:grid-cols-12 gap-2.5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+          <select id="staff-hol-doc"
+            class="hidden sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white">
             <option value="dr_rohan">Dr. Rohan Patil</option>
             <option value="dr_rahul">Dr. Rahul Patil</option>
             <option value="dr_manjusha">Dr. Manjusha Patil</option>
             <option value="dr_snehal">Dr. Snehal Patil</option>
           </select>
-          <input id="staff-hol-date" type="date" required class="sm:col-span-3 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-          <input id="staff-hol-reason" type="text" required maxlength="120" placeholder="Reason (e.g. Conference / Leave)" class="sm:col-span-3 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-          <button type="submit" class="sm:col-span-2 gold-btn px-3 py-2 rounded-lg text-xs font-bold">Block Date</button>
+          <input id="staff-hol-date" type="date" required
+            class="sm:col-span-3 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+          <input id="staff-hol-reason" type="text" required maxlength="120"
+            placeholder="Reason (e.g. Conference / Leave)"
+            class="sm:col-span-3 rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+          <button type="submit" class="sm:col-span-2 gold-btn px-3 py-2 rounded-lg text-xs font-bold">Block
+            Date</button>
         </form>
         <div id="staff-holidays-list" class="space-y-1.5 text-xs"></div>
       </div>
@@ -992,7 +1283,8 @@
       <!-- Admin-Only Security Audit Log -->
       <div id="admin-audit-panel" class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-serif-display text-lg font-bold text-white">Admin Security Audit Log (<code class="text-xs font-mono text-teal-300">/api/admin/audit</code>)</h3>
+          <h3 class="font-serif-display text-lg font-bold text-white">Admin Security Audit Log (<code
+              class="text-xs font-mono text-teal-300">/api/admin/audit</code>)</h3>
           <span id="admin-lock-badge" class="text-[11px] font-semibold px-2.5 py-1 rounded-full"></span>
         </div>
         <div id="admin-audit-content"></div>
@@ -1005,12 +1297,17 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <div class="text-xs font-bold tracking-[0.18em] uppercase text-emerald-400">Verified Backend Hardening</div>
-        <h2 class="font-serif-display text-3xl font-bold text-white mt-1">Security Audit &amp; Traffic Simulation Lab</h2>
-        <p class="text-sm text-slate-400 mt-1">Live results from running <code class="text-teal-300">security_audit.py</code> (36/36 PASS) and <code class="text-teal-300">traffic_sim.py</code> (380 concurrent requests + 20-thread slot race, 0 server errors) against the hardened Python backend.</p>
+        <h2 class="font-serif-display text-3xl font-bold text-white mt-1">Security Audit &amp; Traffic Simulation Lab
+        </h2>
+        <p class="text-sm text-slate-400 mt-1">Live results from running <code
+            class="text-teal-300">security_audit.py</code> (41/41 PASS) and <code
+            class="text-teal-300">load_test_1500.py</code> (100–1,500 simulated users, 0 server errors)
+          against the hardened Python backend.</p>
       </div>
       <div class="flex items-center gap-3">
-        <div class="px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-          Audit Score: 36 / 36 PASS
+        <div
+          class="px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+          Audit Score: 41 / 41 PASS
         </div>
         <div class="px-4 py-2 rounded-xl bg-teal-500/15 border border-teal-500/40 text-teal-300 text-xs font-bold">
           380 Reqs · 0 Errors
@@ -1020,7 +1317,8 @@
 
     <!-- 13-Point Verified Security Checklist -->
     <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6">
-      <h3 class="font-serif-display text-xl font-bold text-white mb-4">Full Security Audit Scorecard (Verified on Real Backend)</h3>
+      <h3 class="font-serif-display text-xl font-bold text-white mb-4">Full Security Audit Scorecard (Verified on Real
+        Backend)</h3>
       <div id="audit-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-3.5"></div>
     </div>
 
@@ -1030,19 +1328,35 @@
       <div class="lg:col-span-5 bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
         <div>
           <h3 class="font-serif-display text-xl font-bold text-white">Interactive Security Probe</h3>
-          <p class="text-xs text-slate-400 mt-1">Click any attack vector below to inspect how the hardened hospital API defends against it.</p>
+          <p class="text-xs text-slate-400 mt-1">Click any attack vector below to inspect how the hardened hospital API
+            defends against it.</p>
           <div class="mt-4 space-y-2">
-            <button type="button" data-probe="xss" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">1. XSS Payload in Appointment Form</button>
-            <button type="button" data-probe="sqli" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">2. SQL Injection Attempt (DROP TABLE)</button>
-            <button type="button" data-probe="env" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">3. Exposed File Probe (GET /.env &amp; /.git/config)</button>
-            <button type="button" data-probe="admin" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">4. Unauthenticated /api/admin/audit Access</button>
-            <button type="button" data-probe="crossdoc" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">5. Cross-Doctor Patient Notification Attempt</button>
-            <button type="button" data-probe="cors" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">6. Untrusted CORS Origin Preflight</button>
-            <button type="button" data-probe="ratelimit" class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">7. Automated Booking Flood (Rate Limiter)</button>
+            <button type="button" data-probe="xss"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">1.
+              XSS Payload in Appointment Form</button>
+            <button type="button" data-probe="sqli"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">2.
+              SQL Injection Attempt (DROP TABLE)</button>
+            <button type="button" data-probe="env"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">3.
+              Exposed File Probe (GET /.env &amp; /.git/config)</button>
+            <button type="button" data-probe="admin"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">4.
+              Unauthenticated /api/admin/audit Access</button>
+            <button type="button" data-probe="crossdoc"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">5.
+              Cross-Doctor Patient Notification Attempt</button>
+            <button type="button" data-probe="cors"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">6.
+              Untrusted CORS Origin Preflight</button>
+            <button type="button" data-probe="ratelimit"
+              class="probe-btn w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-teal-400 text-xs font-semibold text-slate-200 transition">7.
+              Automated Booking Flood (Rate Limiter)</button>
           </div>
         </div>
 
-        <div id="probe-output" class="mt-5 rounded-xl bg-slate-950 border border-slate-800 p-4 font-mono text-[11px] text-emerald-300 leading-relaxed min-h-[130px]">
+        <div id="probe-output"
+          class="mt-5 rounded-xl bg-slate-950 border border-slate-800 p-4 font-mono text-[11px] text-emerald-300 leading-relaxed min-h-[130px]">
           Select an attack probe above to run a defense check...
         </div>
       </div>
@@ -1052,9 +1366,11 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 class="font-serif-display text-xl font-bold text-white">Traffic Handling &amp; Load Simulator</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Baseline initialized with verified VM benchmark (p50: 12.21 ms, p95: 30.21 ms, p99: 39.07 ms).</p>
+            <p class="text-xs text-slate-400 mt-0.5">Baseline initialized with verified VM benchmark (p50: 12.21 ms,
+              p95: 30.21 ms, p99: 39.07 ms).</p>
           </div>
-          <button id="run-sim-btn" type="button" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow transition">
+          <button id="run-sim-btn" type="button"
+            class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow transition">
             Run Traffic Burst
           </button>
         </div>
@@ -1065,14 +1381,16 @@
               <span>Legitimate Public Requests</span>
               <span id="sim-public-val" class="font-mono font-bold text-teal-300">300</span>
             </div>
-            <input id="sim-public-slider" type="range" min="100" max="600" step="50" value="300" class="w-full accent-teal-500" />
+            <input id="sim-public-slider" type="range" min="100" max="600" step="50" value="300"
+              class="w-full accent-teal-500" />
           </div>
           <div>
             <div class="flex justify-between text-xs text-slate-300 mb-1">
               <span>Booking Burst Requests (Cap: 40)</span>
               <span id="sim-burst-val" class="font-mono font-bold text-amber-300">60</span>
             </div>
-            <input id="sim-burst-slider" type="range" min="20" max="120" step="10" value="60" class="w-full accent-amber-500" />
+            <input id="sim-burst-slider" type="range" min="20" max="120" step="10" value="60"
+              class="w-full accent-amber-500" />
           </div>
         </div>
 
@@ -1107,10 +1425,14 @@
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
       <div>© 2026 Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care · Chakur, Dist. Latur, Maharashtra</div>
       <div class="flex flex-wrap items-center justify-center gap-3 text-slate-300">
-        <button type="button" data-policy="privacy" class="policy-link underline hover:text-teal-300">Privacy Policy</button>
-        <button type="button" data-policy="terms" class="policy-link underline hover:text-teal-300">Terms &amp; Conditions</button>
-        <button type="button" data-policy="cookies" class="policy-link underline hover:text-teal-300">Cookie Policy</button>
-        <button type="button" data-policy="refund" class="policy-link underline hover:text-teal-300">Refund &amp; Cancellation</button>
+        <button type="button" data-policy="privacy" class="policy-link underline hover:text-teal-300">Privacy
+          Policy</button>
+        <button type="button" data-policy="terms" class="policy-link underline hover:text-teal-300">Terms &amp;
+          Conditions</button>
+        <button type="button" data-policy="cookies" class="policy-link underline hover:text-teal-300">Cookie
+          Policy</button>
+        <button type="button" data-policy="refund" class="policy-link underline hover:text-teal-300">Refund &amp;
+          Cancellation</button>
       </div>
     </div>
   </footer>
@@ -1144,9 +1466,9 @@
     };
 
     const STANDARD_SLOTS = [
-      "09:30","09:45","10:00","10:15","10:30","10:45","11:00","11:15","11:30","11:45",
-      "12:00","12:15","12:30","12:45","13:00","13:15",
-      "15:00","15:15","15:30","15:45","16:00","16:15","16:30","16:45","17:00","17:15","17:30","17:45"
+      "09:30", "09:45", "10:00", "10:15", "10:30", "10:45", "11:00", "11:15", "11:30", "11:45",
+      "12:00", "12:15", "12:30", "12:45", "13:00", "13:15",
+      "15:00", "15:15", "15:30", "15:45", "16:00", "16:15", "16:30", "16:45", "17:00", "17:15", "17:30", "17:45"
     ];
 
     const VERIFIED_AUDIT_ITEMS = [
@@ -2359,7 +2681,7 @@
             await syncPortalFromServer();
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // Intercept booking form for live SQLite persistence when running on server.py
@@ -2423,7 +2745,7 @@
                 sc.onload = resolve;
                 sc.onerror = reject;
                 document.head.appendChild(sc);
-              }).catch(() => {});
+              }).catch(() => { });
             }
             if (!window.Razorpay) {
               showToast("Unable to load Razorpay Checkout script (check internet).", "red");
@@ -2919,4 +3241,5 @@
     renderAuditCards();
   </script>
 </body>
+
 </html>
