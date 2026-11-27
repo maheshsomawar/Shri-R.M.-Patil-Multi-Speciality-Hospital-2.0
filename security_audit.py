@@ -881,6 +881,49 @@ def run_audit() -> Dict[str, Any]:
                 f"Doctor blocked={st_m_doc}, Admin={st_m_adm} (total_reqs={m_data.get('total_requests')}, 5xx={m_data.get('status_5xx')})",
             )
 
+            # 35. Lab/Billing/Holiday Read RBAC, Non-Secret Payment Config & Password Sync
+            st_lt_unauth, _, _ = http_req(port, "GET", "/api/lab/tests")
+            st_lt_rec, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": reception_cookie})
+            st_lt_pat, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": p1_cookie})
+            st_lt_doc, _, b_lt_doc = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": rohan_cookie})
+            st_lt_lab, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": lab_cookie})
+            st_bi_unauth, _, _ = http_req(port, "GET", "/api/billing/invoices")
+            st_bi_doc, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": rohan_cookie})
+            st_bi_bill, _, b_bi_bill = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": billing_cookie})
+            st_hol_unauth, _, _ = http_req(port, "GET", "/api/staff/holidays")
+            st_hol_pat, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": p1_cookie})
+            st_hol_adm, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": admin_cookie})
+            st_pc, _, b_pc = http_req(port, "GET", "/api/payments/config")
+            pc_safe = (
+                st_pc == 200
+                and cfg.razorpay_key_secret not in b_pc
+                and cfg.razorpay_webhook_secret not in b_pc
+            )
+            synced_n = srv.db.sync_staff_passwords({"nurse": "NewNurse#2026!"}, skip_placeholders=True)
+            st_nurse_login, _, _ = http_req(
+                port, "POST", "/api/auth/login", body={"username": "nurse", "password": "NewNurse#2026!"}
+            )
+            record(
+                "Lab/Billing/Holiday Read RBAC & Payment Config",
+                st_lt_unauth == 401
+                and st_lt_rec == 403
+                and st_lt_pat == 403
+                and st_lt_doc == 200
+                and st_lt_lab == 200
+                and len(json.loads(b_lt_doc).get("lab_tests", [])) >= 1
+                and st_bi_unauth == 401
+                and st_bi_doc == 403
+                and st_bi_bill == 200
+                and len(json.loads(b_bi_bill).get("invoices", [])) >= 1
+                and st_hol_unauth == 401
+                and st_hol_pat == 403
+                and st_hol_adm == 200
+                and pc_safe
+                and synced_n == 1
+                and st_nurse_login == 200,
+                "Lab/Billing/Holiday GET RBAC enforced, /api/payments/config leaks 0 secrets, password sync verified",
+            )
+
             # 13. Rate limiting enforcement
             codes = []
             retry_seen = False

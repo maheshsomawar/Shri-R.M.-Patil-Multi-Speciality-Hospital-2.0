@@ -1,6 +1,6 @@
 # Shri R.M. Patil Multi Speciality Hospital & Trauma Care — Complete HMS
 
-Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System with online pre-visit appointment booking, instant confirmation, Pay-at-Hospital & Razorpay test-mode payments, non-sensitive QR code check-in, all 7 RBAC roles, automated 23-point security audit, and 380-request concurrency & double-booking race simulation.
+Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System with online pre-visit appointment booking, instant confirmation, Pay-at-Hospital & Razorpay test-mode payments, non-sensitive QR code check-in, all 7 RBAC roles, automated 35-point security audit, and 380-request concurrency & double-booking race simulation.
 
 ## Quick Start (Windows 11 & VS Code)
 
@@ -17,11 +17,12 @@ Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System w
    ```powershell
    python migrations.py
    ```
-5. Run the 23-point security audit & 380-request traffic/race simulation:
+5. Run the 35-point security audit & 380-request traffic/race simulation:
    ```powershell
    python security_audit.py
    python traffic_sim.py
    ```
+   *(If you update staff passwords in `.env` after initial seeding, run `python db.py --sync-passwords` to update their scrypt hashes in SQLite.)*
 6. Start the server:
    ```powershell
    python server.py
@@ -37,13 +38,13 @@ Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System w
 - `006_clinical_pharmacy_lab_billing`: `prescriptions`, `pharmacy_inventory` (Shiv Medical Stores), `lab_tests`, `invoices` (`INV-YYYYMMDD-NNN`)
 
 ## REST API Summary
-- **Public:** `GET /api/health`, `GET /api/public/info`, `GET /api/doctors/<username>/slots?date=YYYY-MM-DD`, `POST /api/appointments`
+- **Public:** `GET /api/health`, `GET /api/public/info`, `GET /api/doctors/<username>/slots?date=YYYY-MM-DD`, `GET /api/payments/config`, `POST /api/appointments`
 - **Auth:** `POST /api/patients/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- **Patient (isolated):** `GET /api/patient/me`, `PATCH /api/patient/me`, `GET /api/patient/appointments`, `GET /api/patient/appointments/<id>`, `POST /api/patient/appointments/<id>/cancel`, `POST /api/patient/appointments/<id>/reschedule`, `GET /api/patient/prescriptions`
+- **Patient (isolated):** `GET /api/patient/me`, `PATCH /api/patient/me`, `GET /api/patient/appointments`, `GET /api/patient/appointments/<id>`, `POST /api/patient/appointments/<id>/cancel`, `POST /api/patient/appointments/<id>/reschedule`, `GET /api/patient/prescriptions`, `POST /api/patient/consent`, `GET/POST /api/patient/privacy-requests`, `GET /api/receipts/<id>/print`, `GET /api/prescriptions/<id>/print`
 - **Payments & QR Check-In:** `POST /api/payments/online/verify`, `POST /api/payments/webhook`, `POST /api/staff/payments/<id>/collect`, `POST /api/staff/checkin/scan`
-- **Doctor / Staff / Clinical:** `GET /api/staff/appointments`, `GET /api/staff/appointments/summary`, `PATCH /api/staff/appointments/<id>`, `POST /api/staff/appointments/<id>/notify`, `GET /api/staff/notifications`, `POST /api/staff/holidays`, `POST /api/doctor/prescriptions`
-- **Pharmacy, Lab & Billing:** `GET /api/pharmacy/inventory`, `POST /api/pharmacy/dispense`, `POST /api/lab/tests`, `PATCH /api/lab/tests/<id>`, `POST /api/billing/invoices`
-- **Admin:** `GET /api/admin/audit`
+- **Doctor / Staff / Clinical:** `GET /api/staff/appointments`, `GET /api/staff/appointments/summary`, `PATCH /api/staff/appointments/<id>`, `POST /api/staff/appointments/<id>/notify`, `GET /api/staff/notifications`, `GET/POST /api/staff/holidays`, `POST /api/doctor/prescriptions`
+- **Pharmacy, Lab & Billing:** `GET /api/pharmacy/inventory`, `POST /api/pharmacy/dispense`, `GET/POST /api/lab/tests`, `PATCH /api/lab/tests/<id>`, `GET/POST /api/billing/invoices`, `POST /api/billing/refunds`
+- **Admin:** `GET /admin`, `GET /api/admin/overview`, `GET /api/admin/metrics`, `GET /api/admin/audit`
 
 ## Production Deployment & Backup Checklist
 1. Set `DEBUG=false`, `SECURE_COOKIES=true`, a 64-char random `SESSION_SECRET`, strong unique staff passwords, and exact `ALLOWED_ORIGINS` (your HTTPS domain) in `.env`.
