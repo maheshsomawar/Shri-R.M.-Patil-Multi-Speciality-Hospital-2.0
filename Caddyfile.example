@@ -1,0 +1,20 @@
+# Copy to Caddyfile and replace your-hospital-domain.in with your real domain.
+# Caddy automatically provisions and renews free Let's Encrypt HTTPS certificates.
+# Run with: caddy run --config Caddyfile
+
+your-hospital-domain.in {
+    encode gzip zstd
+
+    reverse_proxy 127.0.0.1:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
