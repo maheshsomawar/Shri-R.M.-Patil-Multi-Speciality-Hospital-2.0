@@ -743,8 +743,8 @@
       </form>
       <div id="login-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200"></div>
 
-      <div class="border-t border-slate-800 pt-5">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">One-Click Demo Access (All 4 Doctors, Reception &amp; Admin)</div>
+      <div id="demo-role-box" class="border-t border-slate-800 pt-5">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">One-Click Offline Preview Access (Hidden When Live Server Active)</div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <button type="button" data-role-user="dr_rohan" class="role-login-btn text-left p-3 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-teal-400 transition">
             <div class="text-sm font-bold text-white">Dr. Rohan Patil</div>
@@ -1006,11 +1006,11 @@
       <div>
         <div class="text-xs font-bold tracking-[0.18em] uppercase text-emerald-400">Verified Backend Hardening</div>
         <h2 class="font-serif-display text-3xl font-bold text-white mt-1">Security Audit &amp; Traffic Simulation Lab</h2>
-        <p class="text-sm text-slate-400 mt-1">Live results from running <code class="text-teal-300">security_audit.py</code> (23/23 PASS) and <code class="text-teal-300">traffic_sim.py</code> (380 concurrent requests + 20-thread slot race, 0 server errors) against the hardened Python backend.</p>
+        <p class="text-sm text-slate-400 mt-1">Live results from running <code class="text-teal-300">security_audit.py</code> (36/36 PASS) and <code class="text-teal-300">traffic_sim.py</code> (380 concurrent requests + 20-thread slot race, 0 server errors) against the hardened Python backend.</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-          Audit Score: 23 / 23 PASS
+          Audit Score: 36 / 36 PASS
         </div>
         <div class="px-4 py-2 rounded-xl bg-teal-500/15 border border-teal-500/40 text-teal-300 text-xs font-bold">
           380 Reqs · 0 Errors
@@ -1125,15 +1125,15 @@
     };
 
     const STAFF_PROFILES = {
-      admin: { username: "admin", fullName: "Hospital Administrator", role: "admin", demoPass: "Admin#RMP2026!" },
-      dr_rohan: { username: "dr_rohan", fullName: "Dr. Rohan Patil", role: "doctor", demoPass: "Rohan#Ortho2026!" },
-      dr_rahul: { username: "dr_rahul", fullName: "Dr. Rahul Patil", role: "doctor", demoPass: "Rahul#Obgy2026!" },
-      dr_manjusha: { username: "dr_manjusha", fullName: "Dr. Manjusha Patil", role: "doctor", demoPass: "Manjusha#Dent2026!" },
-      dr_snehal: { username: "dr_snehal", fullName: "Dr. Snehal Patil", role: "doctor", demoPass: "Snehal#Med2026!" },
-      reception: { username: "reception", fullName: "Front Desk Reception", role: "receptionist", demoPass: "Desk#RMP2026!" },
-      pharmacist: { username: "pharmacist", fullName: "Shiv Medical Pharmacist", role: "pharmacist", demoPass: "Pharm#RMP2026!" },
-      lab_tech: { username: "lab_tech", fullName: "Pathology Lab Technician", role: "lab_tech", demoPass: "Lab#RMP2026!" },
-      billing_desk: { username: "billing_desk", fullName: "Hospital Billing Officer", role: "billing", demoPass: "Bill#RMP2026!" }
+      admin: { username: "admin", fullName: "Hospital Administrator", role: "admin" },
+      dr_rohan: { username: "dr_rohan", fullName: "Dr. Rohan Patil", role: "doctor" },
+      dr_rahul: { username: "dr_rahul", fullName: "Dr. Rahul Patil", role: "doctor" },
+      dr_manjusha: { username: "dr_manjusha", fullName: "Dr. Manjusha Patil", role: "doctor" },
+      dr_snehal: { username: "dr_snehal", fullName: "Dr. Snehal Patil", role: "doctor" },
+      reception: { username: "reception", fullName: "Front Desk Reception", role: "receptionist" },
+      pharmacist: { username: "pharmacist", fullName: "Shiv Medical Pharmacist", role: "pharmacist" },
+      lab_tech: { username: "lab_tech", fullName: "Pathology Lab Technician", role: "lab_tech" },
+      billing_desk: { username: "billing_desk", fullName: "Hospital Billing Officer", role: "billing" }
     };
 
     const DEPT_FEES = {
@@ -1426,13 +1426,21 @@
 
     // ==================== DOCTOR & STAFF LOGIN ====================
     function loginAs(username) {
+      if (state.liveMode) {
+        const uEl = document.getElementById("login-username");
+        const pEl = document.getElementById("login-password");
+        if (uEl) uEl.value = username;
+        if (pEl) pEl.focus();
+        showToast("Live server active — enter staff password from .env to sign in.", "amber");
+        return;
+      }
       const profile = STAFF_PROFILES[username];
       if (!profile) return;
       state.currentUser = profile;
       state.failedLoginAttempts = 0;
       state.csrfToken = "csrf_" + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 10);
-      logAuditEvent(profile.username, "LOGIN_SUCCESS (scrypt + HttpOnly)", 200);
-      showToast(`Signed in as ${profile.fullName} (${profile.role})`, "teal");
+      logAuditEvent(profile.username, "LOGIN_SUCCESS (offline preview)", 200);
+      showToast(`Preview mode: ${profile.fullName} (${profile.role})`, "teal");
       renderPortal();
     }
 
@@ -1440,18 +1448,12 @@
       e.preventDefault();
       const errEl = document.getElementById("login-error");
       errEl.classList.add("hidden");
-      if (state.failedLoginAttempts >= 5) {
-        errEl.textContent = "HTTP 429 Locked: Too many failed login attempts. Use a one-click demo role below or wait 60s.";
-        errEl.classList.remove("hidden");
-        return;
-      }
+      if (state.liveMode) return;
       const user = document.getElementById("login-username").value.trim().toLowerCase();
       const pass = document.getElementById("login-password").value;
       const profile = STAFF_PROFILES[user];
-      if (!profile || profile.demoPass !== pass) {
-        state.failedLoginAttempts += 1;
-        logAuditEvent(user || "anonymous", "LOGIN_FAILED", 401);
-        errEl.textContent = `HTTP 401 Unauthorized: Invalid username or password (attempt ${state.failedLoginAttempts}/5).`;
+      if (!profile || !pass) {
+        errEl.textContent = "Offline Preview: Start python server.py for real scrypt authentication, or click a preview role card below.";
         errEl.classList.remove("hidden");
         return;
       }
@@ -2316,6 +2318,8 @@
         const h = await r.json();
         if (h.status !== "ok") return;
         state.liveMode = true;
+        const demoBox = document.getElementById("demo-role-box");
+        if (demoBox) demoBox.classList.add("hidden");
         if (typeof h.server_time_ist === "string" && /^\d{4}-\d{2}-\d{2}/.test(h.server_time_ist)) {
           const todayIst = h.server_time_ist.slice(0, 10);
           state.serverTodayIst = todayIst;

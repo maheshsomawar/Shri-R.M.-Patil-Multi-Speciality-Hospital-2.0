@@ -203,6 +203,15 @@ class TokenSigner:
             return None
 
 
+def _safe_server_secret(raw_value: str, min_len: int = 32) -> str:
+    """Reject empty, short, or placeholder secrets and generate an ephemeral cryptographic key."""
+    val = (raw_value or "").strip()
+    lower = val.lower()
+    if len(val) < min_len or any(tok in lower for tok in ("replace_with", "change_me", "placeholder", "replace_me")):
+        return secrets.token_hex(32)
+    return val
+
+
 class AppConfig:
     def __init__(self) -> None:
         load_dotenv_file(os.path.join(BASE_DIR, ".env"))
@@ -210,16 +219,14 @@ class AppConfig:
         self.port = int(os.environ.get("PORT", "8080"))
         self.debug = os.environ.get("DEBUG", "false").lower() == "true"
         self.secure_cookies = os.environ.get("SECURE_COOKIES", "false").lower() == "true"
-        self.session_secret = os.environ.get("SESSION_SECRET", "")
-        if len(self.session_secret) < 32:
-            self.session_secret = secrets.token_hex(32)
+        self.session_secret = _safe_server_secret(os.environ.get("SESSION_SECRET", ""), min_len=32)
         self.sms_api_key = os.environ.get("SMS_GATEWAY_API_KEY", "")
         self.sms_provider = os.environ.get("SMS_PROVIDER", "").strip().lower()
         self.msg91_sender_id = os.environ.get("MSG91_SENDER_ID", "RMPHSP").strip()
         self.msg91_template_id = os.environ.get("MSG91_TEMPLATE_ID", "").strip()
-        self.razorpay_key_id = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_local_demo")
-        self.razorpay_key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "") or secrets.token_hex(24)
-        self.razorpay_webhook_secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "") or secrets.token_hex(24)
+        self.razorpay_key_id = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_replace_me")
+        self.razorpay_key_secret = _safe_server_secret(os.environ.get("RAZORPAY_KEY_SECRET", ""), min_len=16)
+        self.razorpay_webhook_secret = _safe_server_secret(os.environ.get("RAZORPAY_WEBHOOK_SECRET", ""), min_len=16)
         origins_raw = os.environ.get("ALLOWED_ORIGINS", "http://127.0.0.1:8080,http://localhost:8080")
         self.allowed_origins = {o.strip() for o in origins_raw.split(",") if o.strip()}
         self.db_path = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "data", "hospital.db"))
@@ -228,16 +235,16 @@ class AppConfig:
         self.rate_limit_login = int(os.environ.get("RATE_LIMIT_LOGIN", "10"))
         self.rate_limit_notify = int(os.environ.get("RATE_LIMIT_NOTIFY", "30"))
         self.staff_passwords = {
-            "admin": os.environ.get("ADMIN_PASSWORD", "Admin#RMP2026!"),
-            "dr_rohan": os.environ.get("DR_ROHAN_PASSWORD", "Rohan#Ortho2026!"),
-            "dr_rahul": os.environ.get("DR_RAHUL_PASSWORD", "Rahul#Obgy2026!"),
-            "dr_manjusha": os.environ.get("DR_MANJUSHA_PASSWORD", "Manjusha#Dent2026!"),
-            "dr_snehal": os.environ.get("DR_SNEHAL_PASSWORD", "Snehal#Med2026!"),
-            "reception": os.environ.get("RECEPTION_PASSWORD", "Desk#RMP2026!"),
-            "nurse": os.environ.get("NURSE_PASSWORD", "Nurse#RMP2026!"),
-            "pharmacist": os.environ.get("PHARMACIST_PASSWORD", "Pharm#RMP2026!"),
-            "lab_tech": os.environ.get("LAB_TECH_PASSWORD", "Lab#RMP2026!"),
-            "billing_desk": os.environ.get("BILLING_PASSWORD", "Bill#RMP2026!"),
+            "admin": os.environ.get("ADMIN_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_rohan": os.environ.get("DR_ROHAN_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_rahul": os.environ.get("DR_RAHUL_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_manjusha": os.environ.get("DR_MANJUSHA_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_snehal": os.environ.get("DR_SNEHAL_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "reception": os.environ.get("RECEPTION_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "nurse": os.environ.get("NURSE_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "pharmacist": os.environ.get("PHARMACIST_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "lab_tech": os.environ.get("LAB_TECH_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "billing_desk": os.environ.get("BILLING_PASSWORD", "").strip() or secrets.token_urlsafe(20),
         }
 
 

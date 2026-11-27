@@ -1,6 +1,6 @@
 # Shri R.M. Patil Multi Speciality Hospital & Trauma Care — Complete HMS
 
-Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System with online pre-visit appointment booking, instant confirmation, Pay-at-Hospital & Razorpay test-mode payments, non-sensitive QR code check-in, all 7 RBAC roles, automated 35-point security audit, and 380-request concurrency & double-booking race simulation.
+Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System with online pre-visit appointment booking, instant confirmation, Pay-at-Hospital & Razorpay test-mode payments, non-sensitive QR code check-in, all 7 RBAC roles, automated 36-point security audit, and 380-request concurrency & double-booking race simulation.
 
 ## Quick Start (Windows 11 & VS Code)
 
@@ -17,7 +17,7 @@ Zero-dependency Python 3.11 + SQLite WAL full-stack Hospital Management System w
    ```powershell
    python migrations.py
    ```
-5. Run the 35-point security audit & 380-request traffic/race simulation:
+5. Run the 36-point security audit & 380-request traffic/race simulation:
    ```powershell
    python security_audit.py
    python traffic_sim.py

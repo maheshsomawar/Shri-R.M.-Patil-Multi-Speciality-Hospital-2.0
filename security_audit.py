@@ -34,7 +34,7 @@ from datetime import datetime, timedelta
 from backup_db import run_backup
 from db_optimize import verify_query_plans
 from migrations import IST, ist_today
-from server import AppConfig, create_server
+from server import AppConfig, _safe_server_secret, create_server
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -922,6 +922,34 @@ def run_audit() -> Dict[str, Any]:
                 and synced_n == 1
                 and st_nurse_login == 200,
                 "Lab/Billing/Holiday GET RBAC enforced, /api/payments/config leaks 0 secrets, password sync verified",
+            )
+
+            # 36. Private Server Secrets & Zero Client Password Leaks
+            ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
+            ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
+            ph_wh = _safe_server_secret("change_me_webhook_secret", min_len=16)
+            idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
+            adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
+            srv_py = open(os.path.join(BASE_DIR, "server.py"), encoding="utf-8").read()
+            client_clean = (
+                "demoPass" not in idx_html
+                and "Admin#RMP2026!" not in idx_html
+                and "Admin#RMP2026!" not in adm_html
+                and "Admin#RMP2026!" not in srv_py
+                and "RAZORPAY_KEY_SECRET" not in idx_html
+                and "SMS_GATEWAY_API_KEY" not in idx_html
+                and "SESSION_SECRET" not in idx_html
+            )
+            secrets_rejected = (
+                "replace_with" not in ph_sess
+                and len(ph_sess) == 64
+                and "replace_with" not in ph_rzp
+                and "change_me" not in ph_wh
+            )
+            record(
+                "Private Server Secrets & Zero Client Passwords",
+                client_clean and secrets_rejected,
+                "Placeholder secrets rejected server-side; zero hardcoded passwords or API secrets in server/HTML",
             )
 
             # 13. Rate limiting enforcement
