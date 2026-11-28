@@ -8,10 +8,10 @@ Reports actual measured p50/p95/p99, avg latency, req/s, error %, RAM (MB), and 
 """
 
 import concurrent.futures
-import ctypes
 import http.client
 import json
 import os
+import resource
 import statistics
 import tempfile
 import threading
@@ -19,49 +19,8 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
-try:
-    import resource  # type: ignore[import-not-found]
-except ImportError:
-    resource = None  # Windows fallback below
-
 from migrations import IST
 from server import AppConfig, create_server
-
-
-def _get_peak_rss_mb() -> float:
-    if resource is not None:
-        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
-    try:
-        from ctypes import wintypes
-
-        class _PMC(ctypes.Structure):
-            _fields_ = [
-                ("cb", wintypes.DWORD),
-                ("PageFaultCount", wintypes.DWORD),
-                ("PeakWorkingSetSize", ctypes.c_size_t),
-                ("WorkingSetSize", ctypes.c_size_t),
-                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
-                ("PagefileUsage", ctypes.c_size_t),
-                ("PeakPagefileUsage", ctypes.c_size_t),
-            ]
-
-        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        k32.GetCurrentProcess.restype = wintypes.HANDLE
-        get_mem = getattr(k32, "K32GetProcessMemoryInfo", None)
-        if get_mem is None:
-            get_mem = ctypes.WinDLL("psapi", use_last_error=True).GetProcessMemoryInfo
-        get_mem.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PMC), wintypes.DWORD]
-        get_mem.restype = wintypes.BOOL
-        pmc = _PMC()
-        pmc.cb = ctypes.sizeof(_PMC)
-        if get_mem(k32.GetCurrentProcess(), ctypes.byref(pmc), pmc.cb):
-            return round(pmc.PeakWorkingSetSize / (1024.0 * 1024.0), 2)
-    except Exception:
-        pass
-    return 0.0
 
 
 def _req(port: int, method: str, path: str, body: Dict[str, Any] | None = None) -> Tuple[int, float]:
@@ -124,7 +83,7 @@ def run_load_suite() -> Dict[str, Any]:
         time.sleep(0.05)
 
         try:
-            # 1. Public Browsing Read Benchmarks at 100, 250, 500, 750, 1,000, 1,250, and 1,500 concurrent requests
+            # 1. Public Browsing Read Benchmarks at 100, 500, 1,000, and 1,500 concurrent requests
             browsing_levels: Dict[str, Any] = {}
             for level in (100, 250, 500, 750, 1000, 1250, 1500):
                 statuses: List[int] = []
@@ -195,7 +154,7 @@ def run_load_suite() -> Dict[str, Any]:
             write_stats = _stats(w_statuses, w_latencies, time.perf_counter() - t0)
             db_rows = srv.db.count_appointments()
             metrics = srv.metrics.snapshot()
-            rss_mb = _get_peak_rss_mb()
+            rss_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
 
             # 3. Simultaneous Patient Registration Test (30 concurrent registrations: 25 unique + 5 duplicate mobile race)
             cfg.rate_limit_login = 50000
@@ -249,7 +208,7 @@ def run_load_suite() -> Dict[str, Any]:
                 "all_targets_met": (
                     all(v["error_rate_pct"] < 1.0 and v["p95_ms"] < 1000.0 for v in browsing_levels.values())
                     and write_stats["error_rate_pct"] < 1.0
-                    and write_stats["p95_ms"] < (10000.0 if os.name == "nt" else 2000.0)
+                    and write_stats["p95_ms"] < 2000.0
                     and db_rows == 51
                 ),
             }

@@ -47,8 +47,7 @@ try {
 
 def _make_driver(width: int, height: int, is_mobile: bool) -> webdriver.Chrome:
     opts = Options()
-    if os.path.exists("/usr/bin/chromium"):
-        opts.binary_location = "/usr/bin/chromium"
+    opts.binary_location = "/usr/bin/chromium"
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")

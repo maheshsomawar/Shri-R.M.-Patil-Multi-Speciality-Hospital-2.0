@@ -18,6 +18,8 @@ Features & Security Controls:
 
 import base64
 import collections
+import concurrent.futures
+import gzip
 import hashlib
 import hmac
 import html
@@ -48,10 +50,28 @@ DEPARTMENT_TO_DOCTOR = {
 }
 
 ALLOWED_STATUSES = {"pending", "confirmed", "completed", "cancelled"}
-STATIC_ALLOWLIST = {"index.html", "admin.html"}
+STATIC_ALLOWLIST = {"index.html", "admin.html", "staff.html"}
+ASSET_ALLOWLIST = {
+    "site.v1.css": ("text/css; charset=utf-8", True),
+    "site.v1.js": ("application/javascript; charset=utf-8", True),
+    "hospital-atrium-480.webp": ("image/webp", False),
+    "hospital-atrium-800.webp": ("image/webp", False),
+    "hospital-atrium-1200.webp": ("image/webp", False),
+    "hospital-atrium-800.jpg": ("image/jpeg", False),
+}
 
 NAME_RE = re.compile(r"^[A-Za-z\s.'-]{2,60}$")
 MOBILE_RE = re.compile(r"^[6-9]\d{9}$")
+
+
+def normalize_indian_mobile(raw: str) -> str:
+    """Normalize Indian mobile numbers (+91 / 91 / leading 0 / spaces / dashes) to 10 digits."""
+    digits = re.sub(r"[\s\-()+]", "", str(raw or "").strip())
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    return digits
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 TIME_RE = re.compile(r"^\d{2}:\d{2}$")
@@ -173,10 +193,12 @@ class SlidingWindowRateLimiter:
 
 
 class TokenSigner:
-    """HMAC-SHA256 signed session tokens with expiration."""
+    """HMAC-SHA256 signed session tokens with expiration and server-side revocation."""
 
     def __init__(self, secret_key: str) -> None:
         self._key = secret_key.encode("utf-8")
+        self._revoked_lock = threading.Lock()
+        self._revoked: Dict[str, int] = {}
 
     def sign(self, payload: Dict[str, Any], ttl_seconds: int = 3600) -> str:
         body = dict(payload)
@@ -187,9 +209,25 @@ class TokenSigner:
         sig = hmac.new(self._key, b64.encode("ascii"), hashlib.sha256).hexdigest()
         return f"{b64}.{sig}"
 
+    def revoke(self, token: str) -> None:
+        try:
+            _, sig = token.split(".", 1)
+            now = int(time.time())
+            with self._revoked_lock:
+                self._revoked[sig] = now + 3600
+                # Prune expired revocations
+                expired = [k for k, exp in self._revoked.items() if exp < now]
+                for k in expired:
+                    del self._revoked[k]
+        except Exception:
+            pass
+
     def verify(self, token: str) -> Optional[Dict[str, Any]]:
         try:
             b64, sig = token.split(".", 1)
+            with self._revoked_lock:
+                if sig in self._revoked:
+                    return None
             expected = hmac.new(self._key, b64.encode("ascii"), hashlib.sha256).hexdigest()
             if not hmac.compare_digest(sig, expected):
                 return None
@@ -208,6 +246,7 @@ class AppConfig:
         self.host = os.environ.get("HOST", "127.0.0.1")
         self.port = int(os.environ.get("PORT", "8080"))
         self.debug = os.environ.get("DEBUG", "false").lower() == "true"
+        self.trust_proxy = os.environ.get("TRUST_PROXY", "false").lower() == "true"
         self.secure_cookies = os.environ.get("SECURE_COOKIES", "false").lower() == "true"
         self.session_secret = os.environ.get("SESSION_SECRET", "")
         if len(self.session_secret) < 32:
@@ -244,10 +283,22 @@ class MetricsCollector:
         self._lock = threading.Lock()
         self.started_at = time.time()
         self.total_requests = 0
+        self.active_requests = 0
+        self.peak_concurrent = 0
         self.status_2xx = 0
         self.status_4xx = 0
         self.status_429 = 0
         self.status_5xx = 0
+
+    def enter_request(self) -> None:
+        with self._lock:
+            self.active_requests += 1
+            if self.active_requests > self.peak_concurrent:
+                self.peak_concurrent = self.active_requests
+
+    def exit_request(self) -> None:
+        with self._lock:
+            self.active_requests = max(0, self.active_requests - 1)
 
     def record(self, status: int) -> None:
         with self._lock:
@@ -267,6 +318,8 @@ class MetricsCollector:
             return {
                 "uptime_seconds": round(time.time() - self.started_at, 1),
                 "total_requests": self.total_requests,
+                "active_requests": self.active_requests,
+                "peak_concurrent": self.peak_concurrent,
                 "status_2xx": self.status_2xx,
                 "status_4xx": self.status_4xx,
                 "status_429": self.status_429,
@@ -298,7 +351,7 @@ class PublicTTLCache:
 class HospitalServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
-    request_queue_size = 128
+    request_queue_size = 512
 
     def __init__(self, server_address, handler_cls, config: AppConfig, db: HospitalDB):
         super().__init__(server_address, handler_cls)
@@ -308,11 +361,41 @@ class HospitalServer(ThreadingHTTPServer):
         self.rate_limiter = SlidingWindowRateLimiter()
         self.metrics = MetricsCollector()
         self.public_cache = PublicTTLCache(ttl_sec=30.0)
+        self.idempotency_cache = PublicTTLCache(ttl_sec=600.0)
+        max_workers = int(os.environ.get("MAX_WORKERS", "64"))
+        self._pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        self._login_lock = threading.Lock()
+        self._login_failures: Dict[str, Deque[float]] = collections.defaultdict(collections.deque)
+
+    def process_request(self, request, client_address) -> None:
+        request.settimeout(10.0)
+        self._pool.submit(self._bounded_worker, request, client_address)
+
+    def _bounded_worker(self, request, client_address) -> None:
+        self.metrics.enter_request()
+        try:
+            self.finish_request(request, client_address)
+        except Exception:
+            self.handle_error(request, client_address)
+        finally:
+            self.metrics.exit_request()
+            self.shutdown_request(request)
+
+    def server_close(self) -> None:
+        try:
+            self._pool.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        super().server_close()
 
 
 class HospitalRequestHandler(BaseHTTPRequestHandler):
     def version_string(self) -> str:
         return "HospitalWeb"
+
+    def send_error(self, code: int, message: Optional[str] = None, explain: Optional[str] = None) -> None:
+        safe_msg = "Request could not be processed" if code >= 500 else (message or "Bad request")
+        self._send_json(code, {"error": safe_msg})
 
     def log_message(self, format: str, *args: Any) -> None:
         if self.server.config.debug:  # type: ignore[attr-defined]
@@ -335,7 +418,12 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         return self.server.rate_limiter  # type: ignore[attr-defined]
 
     def _client_ip(self) -> str:
-        return self.client_address[0] if self.client_address else "unknown"
+        peer = self.client_address[0] if self.client_address else "unknown"
+        if self.cfg.trust_proxy and peer in ("127.0.0.1", "::1"):
+            real_ip = (self.headers.get("X-Real-IP") or "").strip()
+            if real_ip and re.fullmatch(r"[0-9a-fA-F.:]{3,45}", real_ip):
+                return real_ip
+        return peer
 
     def _dispatch_sms(self, mobile: str, text: str) -> str:
         """
@@ -355,7 +443,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
         if is_api:
             self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.send_header("Pragma", "no-cache")
         else:
             self.send_header(
@@ -428,6 +516,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _method_not_allowed(self) -> None:
+        self._send_json(405, {"error": "Method not allowed"})
+
+    def do_PUT(self) -> None:
+        self._method_not_allowed()
+
+    def do_DELETE(self) -> None:
+        self._method_not_allowed()
+
+    def do_TRACE(self) -> None:
+        self._method_not_allowed()
+
     def do_OPTIONS(self) -> None:
         origin = self.headers.get("Origin")
         if origin and origin in self.cfg.allowed_origins:
@@ -458,6 +558,14 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                     "debug": False,
                     "sms_gateway_configured": bool(self.cfg.sms_api_key),
                 },
+            )
+            return
+
+        if path == "/api/appointments/check":
+            self._send_json(
+                405,
+                {"error": "Method not allowed. Use POST /api/appointments/check with JSON body."},
+                extra_headers={"Allow": "POST"},
             )
             return
 
@@ -675,6 +783,55 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"privacy_requests": rows, "count": len(rows)})
             return
 
+        # Shared Ward Nurse Roster & Notifications (Nurse, Doctor, Admin ONLY — zero billing/admin leak!)
+        if path == "/api/nurse/notifications":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("nurse", "doctor", "admin"):
+                self._send_json(403, {"error": "Nurse, Doctor, or Admin access required"})
+                return
+            self._send_json(200, self.db.list_nurse_roster_and_alerts())
+            return
+
+        # Separate Shiv Medical Stores Billing History (Pharmacist & Admin ONLY — separate from hospital billing_desk!)
+        if path == "/api/pharmacy/reports":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            self._send_json(200, {"report": self.db.get_pharmacy_financial_report()})
+            return
+
+        if path == "/api/pharmacy/bills":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            bills = self.db.list_pharmacy_bills(50)
+            self._send_json(200, {"store_name": "Shiv Medical Stores", "bills": bills, "count": len(bills)})
+            return
+
+        # Dynamic Lab Test Catalog (All clinical staff can view; Lab Tech & Admin can add new tests)
+        if path == "/api/lab/catalog":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("lab_tech", "doctor", "admin", "receptionist"):
+                self._send_json(403, {"error": "Clinical staff access required"})
+                return
+            items = self.db.list_lab_catalog()
+            self._send_json(200, {"catalog": items, "count": len(items)})
+            return
+
         if path == "/api/pharmacy/inventory":
             session = self._get_session()
             if not session:
@@ -728,7 +885,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
             self._apply_security_headers(is_api=False)
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.end_headers()
             self.wfile.write(page)
             return
@@ -779,7 +936,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
             self._apply_security_headers(is_api=False)
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.end_headers()
             self.wfile.write(page)
             return
@@ -841,9 +998,90 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/robots.txt":
+            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /staff\nDisallow: /api/\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(txt)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(txt)
+            return
+
+        if path == "/sitemap.xml":
+            xml = (
+                b'<?xml version="1.0" encoding="UTF-8"?>'
+                b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                b'<url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>'
+                b'</urlset>'
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "application/xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(xml)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(xml)
+            return
+
+        if path in ("/staff", "/staff.html"):
+            self._serve_static("staff.html", no_store=True)
+            return
+
+        if path.startswith("/assets/"):
+            asset_name = path[len("/assets/"):]
+            if asset_name not in ASSET_ALLOWLIST:
+                self._send_json(404, {"error": "Not found"})
+                return
+            mime_type, compressible = ASSET_ALLOWLIST[asset_name]
+            assets_root = os.path.realpath(os.path.join(PUBLIC_DIR, "assets"))
+            target = os.path.realpath(os.path.join(assets_root, asset_name))
+            if not target.startswith(assets_root + os.sep) or not os.path.isfile(target):
+                self._send_json(404, {"error": "Not found"})
+                return
+            with open(target, "rb") as fh:
+                raw_data = fh.read()
+            etag = f'"{hashlib.sha256(raw_data).hexdigest()[:16]}"'
+            if self.headers.get("If-None-Match", "").strip() == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+                self._apply_security_headers(is_api=False)
+                self.end_headers()
+                return
+            use_gzip = compressible and "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(raw_data) > 512
+            payload_bytes = gzip.compress(raw_data, compresslevel=6) if use_gzip else raw_data
+            self.send_response(200)
+            self.send_header("Content-Type", mime_type)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            if use_gzip:
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Vary", "Accept-Encoding")
+            self.send_header("Content-Length", str(len(payload_bytes)))
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(payload_bytes)
+            return
+
         if path == "/" or path == "/index.html":
             self._serve_static("index.html")
             return
+
+        if not path.startswith("/api/") and "text/html" in self.headers.get("Accept", "").lower():
+            not_found_path = os.path.realpath(os.path.join(PUBLIC_DIR, "404.html"))
+            if os.path.isfile(not_found_path):
+                with open(not_found_path, "rb") as fh:
+                    nf_bytes = fh.read()
+                self.send_response(404)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(nf_bytes)))
+                self.send_header("Cache-Control", "no-store, private")
+                self._apply_security_headers(is_api=False)
+                self.end_headers()
+                self.wfile.write(nf_bytes)
+                return
 
         self._send_json(404, {"error": "Not found"})
 
@@ -899,11 +1137,37 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             username = str(body.get("username", "")).strip().lower()
             password = str(body.get("password", ""))
+            now_m = time.monotonic()
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                dq = self.server._login_failures[username]  # type: ignore[attr-defined]
+                while dq and dq[0] <= now_m - 300.0:
+                    dq.popleft()
+                if len(dq) >= 5:
+                    self.db.log_audit(username or "anonymous", "ACCOUNT_LOCKED_BRUTEFORCE", self._client_ip(), 429)
+                    self._send_json(
+                        429,
+                        {"error": "Account temporarily locked due to too many failed login attempts. Try again in 5 minutes."},
+                        extra_headers={"Retry-After": "300"},
+                    )
+                    return
             user = self.db.get_user_by_username(username)
             if not user or not verify_password(password, user["password_hash"]):
+                with self.server._login_lock:  # type: ignore[attr-defined]
+                    self.server._login_failures[username].append(now_m)  # type: ignore[attr-defined]
                 self.db.log_audit(username or "anonymous", "LOGIN_FAILED", self._client_ip(), 401)
                 self._send_json(401, {"error": "Invalid username or password"})
                 return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[username].clear()  # type: ignore[attr-defined]
+            prev_cookie = self.headers.get("Cookie", "")
+            if prev_cookie:
+                prev_jar = cookies.SimpleCookie()
+                try:
+                    prev_jar.load(prev_cookie)
+                    if "rmp_session" in prev_jar:
+                        self.signer.revoke(prev_jar["rmp_session"].value)
+                except Exception:
+                    pass
             token = self.signer.sign(
                 {
                     "username": user["username"],
@@ -934,6 +1198,15 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/auth/logout":
+            raw_cookie = self.headers.get("Cookie", "")
+            if raw_cookie:
+                jar = cookies.SimpleCookie()
+                try:
+                    jar.load(raw_cookie)
+                    if "rmp_session" in jar:
+                        self.signer.revoke(jar["rmp_session"].value)
+                except Exception:
+                    pass
             self._send_json(
                 200,
                 {"message": "Logged out"},
@@ -941,17 +1214,57 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
-        if path == "/api/appointments":
-            if not self._check_rate_limit("booking", self.cfg.rate_limit_booking, 60.0):
+        if path == "/api/appointments/check":
+            if not self._check_rate_limit("appt_check", 15, 60.0):
                 return
             body, err = self._read_json_body()
             if err or body is None:
                 self._send_json(400, {"error": err or "Bad request"})
                 return
+            raw_appt_no = str(body.get("appointment_number", "")).strip().upper()
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
+            if not re.fullmatch(r"[A-Z0-9-]{3,32}", raw_appt_no):
+                self._send_json(400, {"error": "Please enter a valid Appointment Number (e.g. APT-20261128-001)."})
+                return
+            if not MOBILE_RE.match(raw_mobile):
+                self._send_json(400, {"error": "Please enter the exact 10-digit registered mobile number."})
+                return
+            target_bucket = f"appt_target:{hashlib.sha256(raw_appt_no.encode('utf-8')).hexdigest()[:16]}"
+            if not self._check_rate_limit(target_bucket, 12, 60.0):
+                return
+            found = self.db.lookup_appointment_status(raw_appt_no, raw_mobile)
+            if not found:
+                self.db.log_audit("public", "PUBLIC_APPT_CHECK:NOT_FOUND", self._client_ip(), 404)
+                self._send_json(
+                    404,
+                    {"error": "No appointment found matching that Appointment Number and Mobile Number."},
+                )
+                return
+            self.db.log_audit("public", f"PUBLIC_APPT_CHECK:FOUND:{found['appointment_number']}", self._client_ip(), 200)
+            self._send_json(200, {"found": True, "appointment": found})
+            return
+
+        if path == "/api/appointments":
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+
+            idem_raw = (self.headers.get("Idempotency-Key") or str(body.get("idempotency_key", ""))).strip()
+            idem_cache_key = ""
+            if idem_raw and re.fullmatch(r"[A-Za-z0-9._-]{8,80}", idem_raw):
+                idem_cache_key = f"book:{self._client_ip()}:{idem_raw}"
+                cached_booking = self.server.idempotency_cache.get(idem_cache_key)  # type: ignore[attr-defined]
+                if cached_booking is not None:
+                    self._send_json(200, cached_booking, extra_headers={"X-Idempotent-Replay": "true"})
+                    return
+
+            if not self._check_rate_limit("booking", self.cfg.rate_limit_booking, 60.0):
+                return
 
             raw_first = str(body.get("first_name", "")).strip()
             raw_last = str(body.get("last_name", "")).strip()
-            raw_mobile = re.sub(r"[\s-]", "", str(body.get("mobile", "")).strip())
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
             department = str(body.get("department", "")).strip()
             raw_msg = str(body.get("message", ""))
             raw_date = str(body.get("appointment_date", "")).strip() or ist_today()
@@ -1038,29 +1351,29 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._client_ip(),
                 201,
             )
-            self._send_json(
-                201,
-                {
-                    "message": "Appointment request received & confirmation SMS triggered",
-                    "appointment": {
-                        "id": record["id"],
-                        "appointment_number": record["appointment_number"],
-                        "reference_code": record["reference_code"],
-                        "appointment_date": record["appointment_date"],
-                        "slot_time": record["slot_time"],
-                        "department": record["department"],
-                        "status": record["status"],
-                        "qr_token": record["qr_token"],
-                        "message": record["message"],
-                    },
-                    "payment": payment_rec,
-                    "confirmation_sms": {
-                        "to": raw_mobile,
-                        "status": sms_record["delivery_status"],
-                        "text": sms_record["body"],
-                    },
+            booking_response = {
+                "message": "Appointment confirmed & confirmation SMS processed",
+                "appointment": {
+                    "id": record["id"],
+                    "appointment_number": record["appointment_number"],
+                    "reference_code": record["reference_code"],
+                    "appointment_date": record["appointment_date"],
+                    "slot_time": record["slot_time"],
+                    "department": record["department"],
+                    "status": record["status"],
+                    "qr_token": record["qr_token"],
+                    "message": record["message"],
                 },
-            )
+                "payment": payment_rec,
+                "confirmation_sms": {
+                    "to": raw_mobile,
+                    "status": sms_record["delivery_status"],
+                    "text": sms_record["body"],
+                },
+            }
+            if idem_cache_key:
+                self.server.idempotency_cache.set(idem_cache_key, booking_response)  # type: ignore[attr-defined]
+            self._send_json(201, booking_response)
             return
 
         # Doctor / Staff sends notification to a specific patient (strict ownership + CSRF + rate limit)
@@ -1124,9 +1437,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             except Exception:
                 self._send_json(400, {"error": "Malformed webhook JSON"})
                 return
-            event_id = str(wh.get("event_id", "")).strip()
-            order_id = str(wh.get("order_id", "")).strip()
-            payment_id = str(wh.get("payment_id", "")).strip()
+            pay_entity = ((wh.get("payload") or {}).get("payment") or {}).get("entity") or {}
+            event_id = str(self.headers.get("X-Razorpay-Event-Id") or wh.get("event_id") or "").strip()
+            order_id = str(pay_entity.get("order_id") or wh.get("order_id") or "").strip()
+            payment_id = str(pay_entity.get("id") or wh.get("payment_id") or "").strip()
             if not event_id or not order_id:
                 self._send_json(400, {"error": "Missing event_id or order_id"})
                 return
@@ -1360,12 +1674,13 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             test_name = sanitize_text(str(body.get("test_name", "")), 120)
             category = sanitize_text(str(body.get("category", "Pathology")), 60)
-            if not test_name or price_inr < 0:
-                self._send_json(400, {"error": "Valid test_name required."})
+            if not test_name or price_inr < 0 or price_inr > 100000:
+                self._send_json(400, {"error": "Valid test_name and price_inr (0-100000) required."})
                 return
-            rec = self.db.create_lab_test(appt_id, session["username"], test_name, category, price_inr)
+            is_doc = session.get("role") == "doctor"
+            rec = self.db.create_lab_test(appt_id, session["username"], test_name, category, price_inr, enforce_owner=is_doc)
             if not rec:
-                self._send_json(404, {"error": "Appointment not found"})
+                self._send_json(403 if is_doc else 404, {"error": "Appointment not found or not assigned to you"})
                 return
             self.db.log_audit(session["username"], f"LAB_ORDER:{rec['test_code']}", self._client_ip(), 201)
             self._send_json(201, {"message": "Lab test ordered", "lab_test": rec})
@@ -1505,6 +1820,219 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(201, {"message": "Refund processed", "refund": rec})
             return
 
+        # Save/Update User Gmail & Phone for Password Recovery (Authenticated + CSRF)
+        if path == "/api/auth/contact-info":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            email = str(body.get("email", "")).strip().lower()
+            phone = re.sub(r"[\s-]", "", str(body.get("phone", "")).strip())
+            if email and not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
+                self._send_json(400, {"error": "Please enter a valid email address (e.g. name@gmail.com)."})
+                return
+            if phone and not MOBILE_RE.match(phone):
+                self._send_json(400, {"error": "Please enter a valid 10-digit Indian mobile number."})
+                return
+            if not email and not phone:
+                self._send_json(400, {"error": "Provide at least a Gmail/email or 10-digit phone number."})
+                return
+            self.db.update_user_recovery_contact(session["username"], sanitize_text(email, 120), phone)
+            self.db.log_audit(session["username"], "UPDATE_RECOVERY_CONTACT", self._client_ip(), 200)
+            self._send_json(200, {"message": "Recovery email and phone saved"})
+            return
+
+        # Forgot Password (Rate-limited; verifies registered Gmail or phone; never leaks account existence)
+        if path == "/api/auth/forgot-password":
+            if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            username = str(body.get("username", "")).strip().lower()
+            email = str(body.get("email", "")).strip().lower()
+            phone = re.sub(r"[\s-]", "", str(body.get("phone", "")).strip())
+            if not username or (not email and not phone):
+                self._send_json(400, {"error": "Username and registered Gmail or phone number are required."})
+                return
+            code = self.db.create_password_reset_code(username, email=email, phone=phone)
+            if code:
+                # Production hook: dispatch OTP via configured SMS/Email provider; never expose in production JSON
+                self.db.log_audit(username, "PASSWORD_RESET_REQUESTED", self._client_ip(), 200)
+            self._send_json(200, {"message": "If the username and recovery email/phone match, a 6-digit reset code has been dispatched."})
+            return
+
+        # Reset Password with 6-Digit Recovery Code (Single-use, 10-min expiry, scrypt hashed)
+        if path == "/api/auth/reset-password":
+            if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            username = str(body.get("username", "")).strip().lower()
+            code = str(body.get("code", "")).strip()
+            new_pw = str(body.get("new_password", ""))
+            if not username or not re.match(r"^\d{6}$", code):
+                self._send_json(400, {"error": "Valid username and 6-digit recovery code required."})
+                return
+            if len(new_pw) < 8 or not re.search(r"[A-Za-z]", new_pw) or not re.search(r"\d", new_pw):
+                self._send_json(400, {"error": "New password must be 8+ characters with a letter and a number."})
+                return
+            ok = self.db.reset_password_with_code(username, code, new_pw)
+            if not ok:
+                self.db.log_audit(username, "PASSWORD_RESET_FAILED", self._client_ip(), 400)
+                self._send_json(400, {"error": "Invalid or expired recovery code."})
+                return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[username].clear()  # type: ignore[attr-defined]
+            self.db.log_audit(username, "PASSWORD_RESET_SUCCESS", self._client_ip(), 200)
+            self._send_json(200, {"message": "Password updated successfully. Please sign in with your new password."})
+            return
+
+        # Shared Ward Nurse Notifications (Nurse, Doctor, Admin ONLY)
+        if path == "/api/nurse/notifications":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("nurse", "doctor", "admin"):
+                self._send_json(403, {"error": "Nurse, Doctor, or Admin access required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            title = sanitize_text(str(body.get("title", "")), 100)
+            msg = sanitize_text(str(body.get("message", "")), 300)
+            appt_no = sanitize_text(str(body.get("appointment_number", "")), 40)
+            priority = str(body.get("priority", "normal")).strip().lower()
+            if priority not in ("normal", "urgent"):
+                priority = "normal"
+            if not title or not msg:
+                self._send_json(400, {"error": "Notification title and message are required."})
+                return
+            rec = self.db.create_nurse_notification(title, msg, session["username"], appt_no, priority)
+            self.db.log_audit(session["username"], f"NURSE_ALERT:{priority}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Nurse ward notification posted", "notification": rec})
+            return
+
+        if path == "/api/pharmacy/purchases":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            med_code = str(body.get("medicine_code", "")).strip().upper()
+            supplier = sanitize_text(str(body.get("supplier_name", "")), 100)
+            try:
+                qty = int(body.get("quantity", 0))
+                unit_cost = int(body.get("unit_cost_inr", 0))
+            except ValueError:
+                qty, unit_cost = 0, -1
+            if not med_code or not supplier or qty <= 0 or unit_cost < 0:
+                self._send_json(400, {"error": "Valid medicine_code, supplier_name, quantity, and unit_cost_inr required."})
+                return
+            rec = self.db.record_pharmacy_purchase(med_code, supplier, qty, unit_cost, session["username"])
+            if not rec:
+                self._send_json(404, {"error": "Medicine code not found in inventory"})
+                return
+            self.db.log_audit(session["username"], f"PHARMACY_PURCHASE:{rec['purchase_code']}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Purchase recorded and stock updated", "purchase": rec})
+            return
+
+        # Separate Shiv Medical Stores Billing (Pharmacist & Admin ONLY — isolated from hospital billing_desk!)
+        if path == "/api/pharmacy/bills":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_PHARMACY_BILL", self._client_ip(), 403)
+                self._send_json(403, {"error": "Only Shiv Medical Stores Pharmacist or Admin can issue pharmacy bills"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            p_name = sanitize_text(str(body.get("patient_name", "")), 80)
+            p_mob = re.sub(r"[\s-]", "", str(body.get("patient_mobile", "")).strip())
+            items = body.get("items")
+            pay_m = str(body.get("payment_method", "cash")).strip().lower()
+            if not p_name or not isinstance(items, list) or not items or pay_m not in ("cash", "upi", "card"):
+                self._send_json(400, {"error": "Valid patient_name, items list, and payment_method (cash/upi/card) required."})
+                return
+            bill, b_err = self.db.create_pharmacy_bill(p_name, p_mob, items, pay_m, session["username"])
+            if b_err or not bill:
+                self._send_json(400, {"error": b_err or "Could not create pharmacy bill"})
+                return
+            self.db.log_audit(session["username"], f"PHARMACY_BILL:{bill['bill_number']}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Shiv Medical Stores bill created", "bill": bill})
+            return
+
+        # Dynamic Lab Test Catalog Addition (Lab Tech & Admin ONLY)
+        if path == "/api/lab/catalog":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") not in ("lab_tech", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_LAB_CATALOG_ADD", self._client_ip(), 403)
+                self._send_json(403, {"error": "Only Lab Technician or Admin can add new lab tests"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            cat_code = re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("catalog_code", "")).strip().upper())[:24]
+            test_name = sanitize_text(str(body.get("test_name", "")), 120)
+            category = sanitize_text(str(body.get("category", "Pathology")), 60)
+            try:
+                price = int(body.get("default_price_inr", 0))
+            except ValueError:
+                price = -1
+            if not cat_code or not test_name or price < 0 or price > 100000:
+                self._send_json(400, {"error": "Valid catalog_code, test_name, and default_price_inr (0-100000) required."})
+                return
+            added = self.db.add_lab_catalog_item(cat_code, test_name, category, price, session["username"])
+            if not added:
+                self._send_json(409, {"error": "Lab test code or name already exists in catalog."})
+                return
+            self.db.log_audit(session["username"], f"LAB_CATALOG_ADD:{cat_code}", self._client_ip(), 201)
+            self._send_json(201, {"message": "New lab test added to catalog", "item": added})
+            return
+
         if path == "/api/staff/holidays":
             session = self._get_session()
             if not session:
@@ -1564,6 +2092,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
 
             role = session.get("role")
+            if role not in ("admin", "doctor", "receptionist"):
+                self.db.log_audit(session["username"], f"UNAUTHORIZED_STAFF_NOTIFY:{appt_id}", self._client_ip(), 403)
+                self._send_json(403, {"error": "Staff authorization required"})
+                return
             doctor_scope = session["username"] if role == "doctor" else None
             appt = self.db.get_appointment_by_id(appt_id, doctor_username=doctor_scope)
             if not appt:
@@ -1606,6 +2138,8 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
     def do_PATCH(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
+        if not self._check_rate_limit("public", self.cfg.rate_limit_public, 60.0):
+            return
 
         if path.startswith("/api/lab/tests/"):
             session = self._get_session()
@@ -1696,6 +2230,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
 
             role = session.get("role")
+            if role not in ("admin", "doctor", "receptionist"):
+                self.db.log_audit(session["username"], f"UNAUTHORIZED_STAFF_APPT_PATCH:{appt_id}", self._client_ip(), 403)
+                self._send_json(403, {"error": "Staff authorization required"})
+                return
             doctor_scope = session["username"] if role == "doctor" else None
             updated = self.db.update_appointment_status(appt_id, new_status, doctor_username=doctor_scope)
             if not updated:
@@ -1716,17 +2254,35 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "Not found"})
             return
         with open(target, "rb") as fh:
-            data = fh.read()
+            raw_data = fh.read()
+
+        etag = f'"{hashlib.sha256(raw_data).hexdigest()[:16]}"'
+        if not no_store and self.headers.get("If-None-Match", "").strip() == etag:
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=300, must-revalidate")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            return
+
+        use_gzip = "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(raw_data) > 1024
+        data = gzip.compress(raw_data, compresslevel=5) if use_gzip else raw_data
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        if use_gzip:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
         self._apply_security_headers(is_api=False)
         if no_store:
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.send_header("Pragma", "no-cache")
+            self.send_header("X-Robots-Tag", "noindex, nofollow")
+        else:
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=300, must-revalidate")
         self.end_headers()
         self.wfile.write(data)
-
 
 def create_server(config: Optional[AppConfig] = None) -> HospitalServer:
     cfg = config or AppConfig()

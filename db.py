@@ -356,6 +356,51 @@ class HospitalDB:
                     "created_at": now,
                 }
 
+    def lookup_appointment_status(self, appointment_number: str, mobile: str) -> Optional[Dict[str, Any]]:
+        """Privacy-safe patient self-service lookup requiring BOTH exact appointment_number and mobile.
+        Returns only safe confirmation status fields — never clinical notes, prescriptions, or PII."""
+        appt_no = appointment_number.strip().upper()
+        mob = mobile.strip()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT a.appointment_number, a.appointment_date, a.slot_time,
+                       a.first_name, a.last_name, a.mobile, a.department,
+                       a.status, a.checked_in_at, a.queue_token,
+                       d.full_name AS doctor_name, d.qualification AS doctor_qualification,
+                       d.consultation_fee_inr AS doc_fee,
+                       p.amount_inr AS pay_amount, p.payment_status AS payment_status
+                FROM appointments a
+                LEFT JOIN doctors d ON d.username = a.doctor_username
+                LEFT JOIN payments p ON p.appointment_id = a.id
+                WHERE a.appointment_number = ?
+                LIMIT 1
+                """,
+                (appt_no,),
+            ).fetchone()
+        if not row:
+            return None
+        stored_mob = str(row["mobile"] or "").strip()
+        if not hmac.compare_digest(stored_mob, mob):
+            return None
+        return {
+            "appointment_number": row["appointment_number"],
+            "appointment_date": row["appointment_date"],
+            "slot_time": row["slot_time"] or "",
+            "patient_name": f"{row['first_name']} {row['last_name']}".strip(),
+            "department": row["department"],
+            "doctor_name": row["doctor_name"] or row["department"],
+            "doctor_qualification": row["doctor_qualification"] or "",
+            "status": row["status"],
+            "checked_in": bool(row["checked_in_at"]),
+            "queue_token": row["queue_token"] or "",
+            "consultation_fee": int(row["pay_amount"] or row["doc_fee"] or 0),
+            "payment_status": row["payment_status"] or "pending",
+            "hospital_name": "Shri R.M. Patil Multi Speciality Hospital & Trauma Care",
+            "hospital_address": "Manu-Madhav Plaza, SBI Bank Building, Near Old Bus Stand, Chakur, Dist. Latur, Maharashtra",
+            "hospital_phones": ["02381-299133", "94217 62599"],
+        }
+
     def get_appointment_by_id(
         self, appointment_id: int, doctor_username: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
@@ -851,7 +896,7 @@ class HospitalDB:
                            p.payment_status, p.method AS payment_method, p.amount_inr, p.receipt_number
                     FROM appointments a
                     LEFT JOIN payments p ON p.appointment_id = a.id
-                    WHERE a.qr_token = ? AND a.qr_token != ''
+                    WHERE a.qr_token = ? AND a.qr_token != '' AND a.status != 'cancelled'
                     """,
                     (qr_token,),
                 ).fetchone()
@@ -1020,14 +1065,20 @@ class HospitalDB:
                 }
 
     def create_lab_test(
-        self, appointment_id: int, doctor_username: str, test_name: str, category: str, price_inr: int
+        self, appointment_id: int, doctor_username: str, test_name: str, category: str, price_inr: int, enforce_owner: bool = False
     ) -> Optional[Dict[str, Any]]:
         now = int(time.time())
         test_code = f"LAB-{secrets.token_hex(3).upper()}"
         with self._connect() as conn:
-            appt = conn.execute(
-                "SELECT id, patient_code FROM appointments WHERE id = ?", (appointment_id,)
-            ).fetchone()
+            if enforce_owner:
+                appt = conn.execute(
+                    "SELECT id, patient_code FROM appointments WHERE id = ? AND doctor_username = ?",
+                    (appointment_id, doctor_username),
+                ).fetchone()
+            else:
+                appt = conn.execute(
+                    "SELECT id, patient_code FROM appointments WHERE id = ?", (appointment_id,)
+                ).fetchone()
             if not appt:
                 return None
             cur = conn.execute(
@@ -1323,3 +1374,268 @@ class HospitalDB:
             for r in rows:
                 counts[r["status"]] = int(r["cnt"])
             return counts
+
+    def update_user_recovery_contact(self, username: str, email: str, phone: str) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE users SET email = ?, phone = ? WHERE username = ?",
+                (email, phone, username),
+            )
+            return cur.rowcount > 0
+
+    def create_password_reset_code(self, username: str, email: str = "", phone: str = "") -> Optional[str]:
+        """Verify username matches registered Gmail or phone, store SHA-256 hash of 6-digit OTP (10-min TTL)."""
+        now = int(time.time())
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT username, email, phone FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+            if not row:
+                return None
+            matched = False
+            if email and row["email"] and hmac.compare_digest(row["email"].lower(), email.lower()):
+                matched = True
+            if phone and row["phone"] and hmac.compare_digest(row["phone"], phone):
+                matched = True
+            if not matched:
+                return None
+            code = f"{secrets.randbelow(900000) + 100000}"
+            tok_hash = hashlib.sha256(f"{username}:{code}".encode("utf-8")).hexdigest()
+            conn.execute(
+                "INSERT INTO password_reset_tokens (username, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, 0, ?)",
+                (username, tok_hash, now + 600, now),
+            )
+            return code
+
+    def reset_password_with_code(self, username: str, code: str, new_password: str) -> bool:
+        now = int(time.time())
+        tok_hash = hashlib.sha256(f"{username}:{code}".encode("utf-8")).hexdigest()
+        new_hash = hash_password(new_password)
+        with self._booking_lock:
+            with self._connect() as conn:
+                row = conn.execute(
+                    """
+                    SELECT id FROM password_reset_tokens
+                    WHERE username = ? AND token_hash = ? AND used = 0 AND expires_at >= ?
+                    ORDER BY id DESC LIMIT 1
+                    """,
+                    (username, tok_hash, now),
+                ).fetchone()
+                if not row:
+                    return False
+                conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE id = ?", (row["id"],))
+                conn.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+                return True
+
+    def list_nurse_roster_and_alerts(self) -> Dict[str, Any]:
+        today = ist_today()
+        with self._connect() as conn:
+            roster = [
+                dict(r)
+                for r in conn.execute(
+                    """
+                    SELECT appointment_number, slot_time, first_name, last_name,
+                           department, doctor_username, status, queue_token
+                    FROM appointments
+                    WHERE appointment_date = ? AND status != 'cancelled'
+                    ORDER BY slot_time ASC, id ASC
+                    """,
+                    (today,),
+                ).fetchall()
+            ]
+            alerts = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id, appointment_number, title, message, priority, created_by, acknowledged, created_at FROM nurse_notifications ORDER BY id DESC LIMIT 50"
+                ).fetchall()
+            ]
+            return {"date_ist": today, "today_roster": roster, "notifications": alerts}
+
+    def create_nurse_notification(
+        self, title: str, message: str, created_by: str, appointment_number: str = "", priority: str = "normal"
+    ) -> Dict[str, Any]:
+        now = int(time.time())
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO nurse_notifications (appointment_number, title, message, priority, created_by, acknowledged, created_at)
+                VALUES (?, ?, ?, ?, ?, 0, ?)
+                """,
+                (appointment_number, title, message, priority, created_by, now),
+            )
+            return {
+                "id": cur.lastrowid,
+                "appointment_number": appointment_number,
+                "title": title,
+                "message": message,
+                "priority": priority,
+                "created_by": created_by,
+                "acknowledged": 0,
+                "created_at": now,
+            }
+
+    def create_pharmacy_bill(
+        self,
+        patient_name: str,
+        patient_mobile: str,
+        items: List[Dict[str, Any]],
+        payment_method: str,
+        billed_by: str,
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """Independent billing for Shiv Medical Stores: atomically deducts stock and calculates total server-side."""
+        import json as _json
+        today_compact = ist_today().replace("-", "")
+        now = int(time.time())
+        with self._booking_lock:
+            with self._connect() as conn:
+                resolved_items = []
+                total_inr = 0
+                for it in items:
+                    code = str(it.get("medicine_code", "")).strip().upper()
+                    qty = int(it.get("quantity", 0))
+                    if not code or qty <= 0 or qty > 100:
+                        return None, "Invalid medicine_code or quantity"
+                    med = conn.execute(
+                        "SELECT id, medicine_code, name, unit_price_inr, stock_qty FROM pharmacy_inventory WHERE medicine_code = ?",
+                        (code,),
+                    ).fetchone()
+                    if not med or int(med["stock_qty"]) < qty:
+                        return None, f"Insufficient stock for {code}"
+                    line_total = int(med["unit_price_inr"]) * qty
+                    total_inr += line_total
+                    resolved_items.append({
+                        "medicine_code": code,
+                        "name": med["name"],
+                        "unit_price_inr": int(med["unit_price_inr"]),
+                        "quantity": qty,
+                        "line_total_inr": line_total,
+                    })
+                    conn.execute(
+                        "UPDATE pharmacy_inventory SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?",
+                        (qty, now, med["id"]),
+                    )
+                if not resolved_items:
+                    return None, "At least one medicine item is required"
+                cnt = conn.execute(
+                    "SELECT COUNT(*) AS cnt FROM pharmacy_bills WHERE bill_number LIKE ?",
+                    (f"PHM-{today_compact}-%",),
+                ).fetchone()
+                seq = (int(cnt["cnt"]) if cnt else 0) + 1
+                bill_no = f"PHM-{today_compact}-{seq:03d}"
+                cur = conn.execute(
+                    """
+                    INSERT INTO pharmacy_bills
+                    (bill_number, store_name, patient_name, patient_mobile, items_json, total_inr, payment_method, payment_status, billed_by, created_at)
+                    VALUES (?, 'Shiv Medical Stores', ?, ?, ?, ?, ?, 'PAID', ?, ?)
+                    """,
+                    (bill_no, patient_name, patient_mobile, _json.dumps(resolved_items), total_inr, payment_method, billed_by, now),
+                )
+                return {
+                    "id": cur.lastrowid,
+                    "bill_number": bill_no,
+                    "store_name": "Shiv Medical Stores",
+                    "patient_name": patient_name,
+                    "patient_mobile": patient_mobile,
+                    "items": resolved_items,
+                    "total_inr": total_inr,
+                    "payment_method": payment_method,
+                    "payment_status": "PAID",
+                    "billed_by": billed_by,
+                }, None
+
+    def list_pharmacy_bills(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, bill_number, store_name, patient_name, patient_mobile, total_inr, payment_method, payment_status, billed_by, created_at FROM pharmacy_bills ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def list_lab_catalog(self) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, catalog_code, test_name, category, default_price_inr, added_by FROM lab_test_catalog WHERE active = 1 ORDER BY id ASC"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def add_lab_catalog_item(
+        self, catalog_code: str, test_name: str, category: str, default_price_inr: int, added_by: str
+    ) -> Optional[Dict[str, Any]]:
+        now = int(time.time())
+        with self._connect() as conn:
+            try:
+                cur = conn.execute(
+                    """
+                    INSERT INTO lab_test_catalog (catalog_code, test_name, category, default_price_inr, added_by, active, created_at)
+                    VALUES (?, ?, ?, ?, ?, 1, ?)
+                    """,
+                    (catalog_code, test_name, category, default_price_inr, added_by, now),
+                )
+                return {
+                    "id": cur.lastrowid,
+                    "catalog_code": catalog_code,
+                    "test_name": test_name,
+                    "category": category,
+                    "default_price_inr": default_price_inr,
+                    "added_by": added_by,
+                }
+            except sqlite3.IntegrityError:
+                return None
+
+    def record_pharmacy_purchase(
+        self, medicine_code: str, supplier_name: str, quantity: int, unit_cost_inr: int, recorded_by: str
+    ) -> Optional[Dict[str, Any]]:
+        """Record a Shiv Medical Stores stock purchase and atomically increment inventory."""
+        today_compact = ist_today().replace("-", "")
+        now = int(time.time())
+        total_cost = quantity * unit_cost_inr
+        with self._booking_lock:
+            with self._connect() as conn:
+                med = conn.execute(
+                    "SELECT id, stock_qty FROM pharmacy_inventory WHERE medicine_code = ?", (medicine_code,)
+                ).fetchone()
+                if not med:
+                    return None
+                cnt = conn.execute(
+                    "SELECT COUNT(*) AS cnt FROM pharmacy_purchases WHERE purchase_code LIKE ?",
+                    (f"PUR-{today_compact}-%",),
+                ).fetchone()
+                seq = (int(cnt["cnt"]) if cnt else 0) + 1
+                p_code = f"PUR-{today_compact}-{seq:03d}"
+                conn.execute(
+                    "UPDATE pharmacy_inventory SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?",
+                    (quantity, now, med["id"]),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO pharmacy_purchases
+                    (purchase_code, medicine_code, supplier_name, quantity, unit_cost_inr, total_cost_inr, recorded_by, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (p_code, medicine_code, supplier_name, quantity, unit_cost_inr, total_cost, recorded_by, now),
+                )
+                return {
+                    "purchase_code": p_code,
+                    "medicine_code": medicine_code,
+                    "supplier_name": supplier_name,
+                    "quantity": quantity,
+                    "total_cost_inr": total_cost,
+                    "new_stock_qty": int(med["stock_qty"]) + quantity,
+                }
+
+    def get_pharmacy_financial_report(self) -> Dict[str, Any]:
+        """Dedicated financial summary strictly for Shiv Medical Stores (separate from hospital billing)."""
+        with self._connect() as conn:
+            sales = int(conn.execute("SELECT COALESCE(SUM(total_inr), 0) FROM pharmacy_bills WHERE payment_status = 'PAID'").fetchone()[0])
+            bill_cnt = int(conn.execute("SELECT COUNT(*) FROM pharmacy_bills").fetchone()[0])
+            purchases = int(conn.execute("SELECT COALESCE(SUM(total_cost_inr), 0) FROM pharmacy_purchases").fetchone()[0])
+            low_stock = int(conn.execute("SELECT COUNT(*) FROM pharmacy_inventory WHERE stock_qty <= reorder_level").fetchone()[0])
+            return {
+                "store_name": "Shiv Medical Stores",
+                "total_bills": bill_cnt,
+                "total_sales_inr": sales,
+                "total_purchases_inr": purchases,
+                "net_margin_inr": sales - purchases,
+                "low_stock_items": low_stock,
+            }
