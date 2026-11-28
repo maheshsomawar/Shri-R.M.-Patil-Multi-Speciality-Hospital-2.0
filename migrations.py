@@ -550,6 +550,12 @@ def _m009_recovery_nurse_pharmacy_lab_catalog(conn: sqlite3.Connection) -> None:
         )
 
 
+def _m010_staff_account_active_flag(conn: sqlite3.Connection) -> None:
+    u_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "active" not in u_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
+
+
 MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("001_initial_schema", _m001_initial_schema),
     ("002_departments_and_doctors", _m002_departments_and_doctors),
@@ -560,6 +566,7 @@ MIGRATIONS: List[Tuple[str, Callable[[sqlite3.Connection], None]]] = [
     ("007_privacy_consent_refunds_billing", _m007_privacy_consent_refunds_billing),
     ("008_indexes_and_background_jobs", _m008_indexes_and_background_jobs),
     ("009_recovery_nurse_pharmacy_lab_catalog", _m009_recovery_nurse_pharmacy_lab_catalog),
+    ("010_staff_account_active_flag", _m010_staff_account_active_flag),
 ]
 
 

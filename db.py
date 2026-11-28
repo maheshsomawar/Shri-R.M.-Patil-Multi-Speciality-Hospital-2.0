@@ -191,7 +191,7 @@ class HospitalDB:
     def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT id, username, full_name, role, department, password_hash FROM users WHERE username = ?",
+                "SELECT id, username, full_name, role, department, password_hash, COALESCE(active, 1) AS active FROM users WHERE username = ?",
                 (username,),
             ).fetchone()
             return dict(row) if row else None
@@ -1788,6 +1788,91 @@ class HospitalDB:
                 "net_margin_inr": sales - purchases,
                 "low_stock_items": low_stock,
             }
+
+    def change_user_password(self, username: str, current_password: str, new_password: str) -> Tuple[bool, str]:
+        """Verify current scrypt password and rotate password hash for the authenticated user."""
+        new_hash = hash_password(new_password)
+        with self._booking_lock:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT id, password_hash, COALESCE(active, 1) AS active FROM users WHERE username = ?",
+                    (username,),
+                ).fetchone()
+                if not row or int(row["active"]) == 0:
+                    return False, "not_found"
+                if not verify_password(current_password, row["password_hash"]):
+                    return False, "wrong_current"
+                conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, row["id"]))
+                conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE username = ? AND used = 0", (username,))
+                return True, "ok"
+
+    def list_staff_users(self) -> List[Dict[str, Any]]:
+        """Return non-patient staff accounts (zero password hashes or raw recovery contacts exposed)."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, username, full_name, role, COALESCE(department, '') AS department,
+                       COALESCE(active, 1) AS active,
+                       CASE WHEN COALESCE(email, '') != '' OR COALESCE(phone, '') != '' THEN 1 ELSE 0 END AS has_recovery_contact,
+                       created_at
+                FROM users
+                WHERE role != 'patient'
+                ORDER BY id ASC
+                """
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def create_staff_user(
+        self, username: str, full_name: str, role: str, department: str, password: str
+    ) -> Optional[Dict[str, Any]]:
+        """Create an individual staff login account with its own scrypt password hash."""
+        now = int(time.time())
+        pw_hash = hash_password(password)
+        with self._connect() as conn:
+            try:
+                cur = conn.execute(
+                    """
+                    INSERT INTO users (username, full_name, role, department, password_hash, active, created_at)
+                    VALUES (?, ?, ?, ?, ?, 1, ?)
+                    """,
+                    (username, full_name, role, department, pw_hash, now),
+                )
+                return {
+                    "id": cur.lastrowid,
+                    "username": username,
+                    "full_name": full_name,
+                    "role": role,
+                    "department": department,
+                    "active": 1,
+                    "has_recovery_contact": 0,
+                    "created_at": now,
+                }
+            except sqlite3.IntegrityError:
+                return None
+
+    def admin_reset_user_password(self, username: str, new_password: str) -> bool:
+        """Assign/reset a specific staff account's login password in SQLite."""
+        new_hash = hash_password(new_password)
+        with self._booking_lock:
+            with self._connect() as conn:
+                cur = conn.execute(
+                    "UPDATE users SET password_hash = ? WHERE username = ? AND role != 'patient'",
+                    (new_hash, username),
+                )
+                if cur.rowcount <= 0:
+                    return False
+                conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE username = ? AND used = 0", (username,))
+                return True
+
+    def admin_set_user_active(self, username: str, active: bool) -> bool:
+        """Enable or disable an individual staff user login."""
+        val = 1 if active else 0
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE users SET active = ? WHERE username = ? AND role != 'patient'",
+                (val, username),
+            )
+            return cur.rowcount > 0
 
 
 if __name__ == "__main__":

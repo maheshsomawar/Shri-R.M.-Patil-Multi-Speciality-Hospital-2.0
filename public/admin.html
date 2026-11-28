@@ -100,7 +100,7 @@
       </div>
       <div class="flex flex-wrap gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
         <button data-tab="overview" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950">Overview &amp; Revenue</button>
-        <button data-tab="staff" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">Doctors &amp; 7 Roles</button>
+        <button data-tab="staff" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">Staff Logins &amp; Passwords</button>
         <button data-tab="audit" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">Security Audit Logs</button>
       </div>
     </div>
@@ -129,7 +129,7 @@
       </div>
       <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
         <div class="text-[10px] uppercase tracking-wider text-slate-400">Security Audit</div>
-        <div class="text-2xl font-bold text-emerald-400 mt-1">55 / 55</div>
+        <div class="text-2xl font-bold text-emerald-400 mt-1">58 / 58</div>
         <div class="text-[11px] text-teal-300 mt-0.5">0 critical leaks</div>
       </div>
     </div>
@@ -178,12 +178,54 @@
       </div>
     </div>
 
-    <!-- TAB 2: DOCTORS & 7-ROLE ACCESS MATRIX -->
+    <!-- TAB 2: INDIVIDUAL STAFF ACCOUNTS & PASSWORDS -->
     <div id="panel-staff" class="admin-panel hidden bg-[#0d1c31] border border-slate-800 rounded-2xl overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="font-serif-display text-lg font-bold text-white">Hospital Specialists &amp; 7-Role RBAC Matrix</h3>
+      <div class="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 class="font-serif-display text-lg font-bold text-white">Individual Staff Logins, Roles &amp; Password Assignment</h3>
+          <p class="text-xs text-slate-400">Create separate login accounts for doctors, nurses, receptionists, pharmacists, lab techs &amp; billing staff, assign or reset individual passwords, and disable inactive accounts.</p>
+        </div>
         <span class="text-[11px] font-mono text-teal-300">Password Hashing: salted scrypt</span>
       </div>
+
+      <form id="admin-create-user-form" class="px-6 py-4 bg-slate-900/60 border-b border-slate-800 grid sm:grid-cols-12 gap-2.5 items-end">
+        <div class="sm:col-span-2">
+          <label for="admin-new-username" class="block text-[10px] uppercase text-slate-400 mb-1">Username</label>
+          <input id="admin-new-username" type="text" required pattern="[a-z0-9_]{3,30}" placeholder="nurse_ward2"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs font-mono text-white" />
+        </div>
+        <div class="sm:col-span-3">
+          <label for="admin-new-fullname" class="block text-[10px] uppercase text-slate-400 mb-1">Full Name</label>
+          <input id="admin-new-fullname" type="text" required maxlength="80" placeholder="Sunita Shinde (Ward 2)"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="admin-new-role" class="block text-[10px] uppercase text-slate-400 mb-1">Role</label>
+          <select id="admin-new-role" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-2 text-xs text-white">
+            <option value="doctor">doctor</option>
+            <option value="receptionist">receptionist</option>
+            <option value="nurse">nurse</option>
+            <option value="pharmacist">pharmacist</option>
+            <option value="lab_tech">lab_tech</option>
+            <option value="billing">billing</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2">
+          <label for="admin-new-dept" class="block text-[10px] uppercase text-slate-400 mb-1">Department</label>
+          <input id="admin-new-dept" type="text" maxlength="80" placeholder="Surgical Ward"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="admin-new-password" class="block text-[10px] uppercase text-slate-400 mb-1">Password (8+)</label>
+          <input id="admin-new-password" type="password" required minlength="8" placeholder="Letter + digit"
+            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+        </div>
+        <div class="sm:col-span-1">
+          <button type="submit" class="w-full gold-btn py-2 rounded-lg text-xs font-bold">Add</button>
+        </div>
+      </form>
+
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider">
@@ -191,9 +233,9 @@
               <th class="px-5 py-3">Username</th>
               <th class="px-5 py-3">Name</th>
               <th class="px-5 py-3">Role</th>
-              <th class="px-5 py-3">Department / Reg. No.</th>
-              <th class="px-5 py-3">Consultation Fee</th>
-              <th class="px-5 py-3">/admin Access</th>
+              <th class="px-5 py-3">Department</th>
+              <th class="px-5 py-3">Status &amp; Recovery</th>
+              <th class="px-5 py-3">Set Password &amp; Account Toggle</th>
             </tr>
           </thead>
           <tbody id="admin-staff-tbody" class="divide-y divide-slate-800 text-slate-200"></tbody>
@@ -236,6 +278,7 @@
       liveMode: false,
       unlocked: false,
       csrf: "",
+      staffUsers: [],
       holidays: [
         { doc: "Dr. Rohan Patil", date: "2026-12-05", reason: "Orthopaedic CME Workshop" }
       ],
@@ -390,19 +433,131 @@
     });
 
     function renderStaff() {
-      document.getElementById("admin-staff-tbody").innerHTML = STAFF_MATRIX.map(s => `
+      const tbody = document.getElementById("admin-staff-tbody");
+      if (state.liveMode && Array.isArray(state.staffUsers) && state.staffUsers.length) {
+        tbody.innerHTML = state.staffUsers.map(u => {
+          const isActive = Number(u.active ?? 1) === 1;
+          const isSelfAdmin = u.username === "admin";
+          return `
+            <tr class="hover:bg-slate-800/40">
+              <td class="px-5 py-3 font-mono text-teal-300 font-semibold">${escHtml(u.username)}</td>
+              <td class="px-5 py-3 font-semibold text-white">${escHtml(u.full_name)}</td>
+              <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${escHtml(u.role)}</td>
+              <td class="px-5 py-3">${escHtml(u.department || "—")}</td>
+              <td class="px-5 py-3">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${isActive ? "ACTIVE" : "DISABLED"}</span>
+                <span class="ml-1.5 text-[10px] text-slate-400">${Number(u.has_recovery_contact) === 1 ? "Recovery Set" : "No Recovery"}</span>
+              </td>
+              <td class="px-5 py-3">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <input type="password" minlength="8" data-pw-input="${escHtml(u.username)}" placeholder="New password (8+)"
+                    class="w-36 rounded bg-[#16263d] border border-slate-700 px-2.5 py-1 text-[11px] text-white" />
+                  <button type="button" data-reset-user="${escHtml(u.username)}"
+                    class="admin-reset-pw-btn px-2.5 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 hover:bg-amber-500 hover:text-slate-950 text-[11px] font-semibold">Set Pw</button>
+                  ${!isSelfAdmin ? `<button type="button" data-toggle-user="${escHtml(u.username)}" data-next-active="${isActive ? "0" : "1"}" class="admin-toggle-user-btn px-2.5 py-1 rounded border text-[11px] font-semibold ${isActive ? "bg-red-500/15 border-red-500/40 text-red-200 hover:bg-red-600 hover:text-white" : "bg-emerald-500/15 border-emerald-500/40 text-emerald-200 hover:bg-emerald-600 hover:text-white"}">${isActive ? "Disable" : "Enable"}</button>` : `<span class="text-[10px] text-slate-500 font-mono">Primary Admin</span>`}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        tbody.querySelectorAll(".admin-reset-pw-btn").forEach(btn => {
+          btn.addEventListener("click", async function () {
+            const uname = this.dataset.resetUser;
+            const inp = tbody.querySelector(`[data-pw-input="${CSS.escape(uname)}"]`);
+            const newPw = inp ? inp.value : "";
+            if (!newPw || newPw.length < 8) {
+              toast("Password must be at least 8 characters with letters and digits.", "red");
+              return;
+            }
+            const res = await fetch("/api/admin/users/reset-password", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+              body: JSON.stringify({ username: uname, new_password: newPw }),
+              credentials: "same-origin"
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+              if (inp) inp.value = "";
+              toast(`Updated individual login password for ${uname}!`);
+            } else {
+              toast(data.error || "Password reset failed", "red");
+            }
+          });
+        });
+
+        tbody.querySelectorAll(".admin-toggle-user-btn").forEach(btn => {
+          btn.addEventListener("click", async function () {
+            const uname = this.dataset.toggleUser;
+            const nextActive = this.dataset.nextActive === "1";
+            const res = await fetch(`/api/admin/users/${encodeURIComponent(uname)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+              body: JSON.stringify({ active: nextActive }),
+              credentials: "same-origin"
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+              toast(`${uname} is now ${nextActive ? "ACTIVE" : "DISABLED"}.`);
+              await refreshAdminUsers();
+            } else {
+              toast(data.error || "Status update failed", "red");
+            }
+          });
+        });
+        return;
+      }
+
+      tbody.innerHTML = STAFF_MATRIX.map(s => `
         <tr class="hover:bg-slate-800/40">
           <td class="px-5 py-3 font-mono text-teal-300">${escHtml(s.user)}</td>
           <td class="px-5 py-3 font-semibold text-white">${escHtml(s.name)}</td>
           <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${escHtml(s.role)}</td>
-          <td class="px-5 py-3">${escHtml(s.dept)}</td>
-          <td class="px-5 py-3 font-mono">${escHtml(s.fee)}</td>
+          <td class="px-5 py-3">${escHtml(s.dept)} · ${escHtml(s.fee)}</td>
           <td class="px-5 py-3">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.role === "admin" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${escHtml(s.adminAccess)}</span>
           </td>
+          <td class="px-5 py-3 text-slate-400">Live server required</td>
         </tr>
       `).join("");
     }
+
+    async function refreshAdminUsers() {
+      if (!state.liveMode) return;
+      const res = await fetch("/api/admin/users", { credentials: "same-origin" });
+      if (res.ok) {
+        const d = await res.json().catch(() => ({}));
+        state.staffUsers = Array.isArray(d.staff_users) ? d.staff_users : [];
+        renderStaff();
+      }
+    }
+
+    document.getElementById("admin-create-user-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      if (!state.liveMode) {
+        toast("Start python server.py to create live staff accounts.", "red");
+        return;
+      }
+      const username = document.getElementById("admin-new-username").value.trim().toLowerCase();
+      const full_name = document.getElementById("admin-new-fullname").value.trim();
+      const role = document.getElementById("admin-new-role").value;
+      const department = document.getElementById("admin-new-dept").value.trim();
+      const password = document.getElementById("admin-new-password").value;
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+        body: JSON.stringify({ username, full_name, role, department, password }),
+        credentials: "same-origin"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        this.reset();
+        toast(`Created account '${username}' with its own login password!`);
+        await refreshAdminUsers();
+      } else {
+        toast(data.error || "Could not create user", "red");
+      }
+    });
 
     function renderHolidays() {
       const box = document.getElementById("admin-holidays-list");
@@ -518,11 +673,12 @@
         state.liveMode = true;
         state.csrf = meData.csrf_token || state.csrf;
 
-        const [ovRes, auRes, holRes, metRes] = await Promise.all([
+        const [ovRes, auRes, holRes, metRes, usrRes] = await Promise.all([
           fetch("/api/admin/overview", { credentials: "same-origin" }),
           fetch("/api/admin/audit", { credentials: "same-origin" }),
           fetch("/api/staff/holidays", { credentials: "same-origin" }),
-          fetch("/api/admin/metrics", { credentials: "same-origin" })
+          fetch("/api/admin/metrics", { credentials: "same-origin" }),
+          fetch("/api/admin/users", { credentials: "same-origin" })
         ]);
         let deptBreakdown = null;
         if (ovRes.ok) {
@@ -564,6 +720,10 @@
           document.getElementById("m-5xx").textContent = String(m.status_5xx ?? 0);
           const bj = m.background_jobs || {};
           document.getElementById("m-jobs").textContent = `${bj.completed ?? 0} ok`;
+        }
+        if (usrRes && usrRes.ok) {
+          const ud = await usrRes.json();
+          state.staffUsers = Array.isArray(ud.staff_users) ? ud.staff_users : [];
         }
         unlockAdmin(true);
         initRevenueChart(deptBreakdown);

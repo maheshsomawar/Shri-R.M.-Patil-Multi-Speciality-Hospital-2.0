@@ -138,8 +138,9 @@ def run_audit() -> Dict[str, Any]:
             idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
             stf_html = open(os.path.join(BASE_DIR, "public", "staff.html"), encoding="utf-8").read()
             adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
+            pat_html = open(os.path.join(BASE_DIR, "public", "patient.html"), encoding="utf-8").read()
             site_js = open(os.path.join(BASE_DIR, "public", "assets", "site.v1.js"), encoding="utf-8").read()
-            client_bundle = "\n".join((idx_html, stf_html, adm_html, site_js))
+            client_bundle = "\n".join((idx_html, stf_html, adm_html, pat_html, site_js))
             client_clean = (
                 "demoPass" not in client_bundle
                 and "Admin#RMP2026!" not in client_bundle
@@ -266,7 +267,7 @@ def run_audit() -> Dict[str, Any]:
                 return cookie_val, csrf_val
 
             rohan_cookie, rohan_csrf = login("dr_rohan", cfg.staff_passwords["dr_rohan"])
-            admin_cookie, _ = login("admin", cfg.staff_passwords["admin"])
+            admin_cookie, admin_csrf = login("admin", cfg.staff_passwords["admin"])
 
             st_r_appts, _, b_r_appts = http_req(port, "GET", "/api/staff/appointments", headers={"Cookie": rohan_cookie})
             r_appts = json.loads(b_r_appts)["appointments"]
@@ -1394,6 +1395,110 @@ def run_audit() -> Dict[str, Any]:
                 "Custom Branded 404 Page (HTML for Browsers, JSON for /api/*, Zero Internal Leaks)",
                 custom_404_ok,
                 f"html_404={st_nf_html} ({h_nf_html.get('content-type')}), api_404={st_nf_api} ({h_nf_api.get('content-type')})",
+            )
+
+            # 56. Authenticated Self-Service Password Change & Old Password Invalidation
+            st_cp_unauth, _, _ = http_req(
+                port, "POST", "/api/auth/change-password", body={"current_password": "x", "new_password": "NewUser#2026"}
+            )
+            st_cp_wrong, _, _ = http_req(
+                port,
+                "POST",
+                "/api/auth/change-password",
+                body={"current_password": "WrongPassword!9", "new_password": "LabUpdated#2026"},
+                headers={"Cookie": lab_cookie, "X-CSRF-Token": lab_csrf},
+            )
+            st_cp_ok, _, _ = http_req(
+                port,
+                "POST",
+                "/api/auth/change-password",
+                body={"current_password": cfg.staff_passwords["lab_tech"], "new_password": "LabUpdated#2026"},
+                headers={"Cookie": lab_cookie, "X-CSRF-Token": lab_csrf},
+            )
+            st_cp_old_fail, _, _ = http_req(
+                port, "POST", "/api/auth/login", body={"username": "lab_tech", "password": cfg.staff_passwords["lab_tech"]}
+            )
+            st_cp_new_ok, _, _ = http_req(
+                port, "POST", "/api/auth/login", body={"username": "lab_tech", "password": "LabUpdated#2026"}
+            )
+            record(
+                "Self-Service Password Change (Scrypt Verified & Old Password Invalidated)",
+                st_cp_unauth == 401 and st_cp_wrong == 401 and st_cp_ok == 200 and st_cp_old_fail == 401 and st_cp_new_ok == 200,
+                f"unauth={st_cp_unauth}, wrong_cur={st_cp_wrong}, changed={st_cp_ok}, old_blocked={st_cp_old_fail}, new_login={st_cp_new_ok}",
+            )
+
+            # 57. Admin Individual Staff Account Creation, Password Reset & Deactivation
+            st_usr_doc, _, _ = http_req(port, "GET", "/api/admin/users", headers={"Cookie": rohan_cookie})
+            st_usr_adm, _, _ = http_req(port, "GET", "/api/admin/users", headers={"Cookie": admin_cookie})
+            st_usr_cr, _, _ = http_req(
+                port,
+                "POST",
+                "/api/admin/users",
+                body={
+                    "username": "nurse_ward2",
+                    "full_name": "Sunita Shinde (Ward Nurse 2)",
+                    "role": "nurse",
+                    "department": "Surgical Ward",
+                    "password": "NurseTwo#2026",
+                },
+                headers={"Cookie": admin_cookie, "X-CSRF-Token": admin_csrf},
+            )
+            n2_cookie, _ = login("nurse_ward2", "NurseTwo#2026")
+            st_n2_alerts, _, _ = http_req(port, "GET", "/api/nurse/notifications", headers={"Cookie": n2_cookie})
+            st_n2_bill, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": n2_cookie})
+            st_n2_reset, _, _ = http_req(
+                port,
+                "POST",
+                "/api/admin/users/reset-password",
+                body={"username": "nurse_ward2", "new_password": "NurseTwoNew#2026"},
+                headers={"Cookie": admin_cookie, "X-CSRF-Token": admin_csrf},
+            )
+            st_n2_deact, _, _ = http_req(
+                port,
+                "PATCH",
+                "/api/admin/users/nurse_ward2",
+                body={"active": False},
+                headers={"Cookie": admin_cookie, "X-CSRF-Token": admin_csrf},
+            )
+            st_n2_blocked, _, _ = http_req(
+                port, "POST", "/api/auth/login", body={"username": "nurse_ward2", "password": "NurseTwoNew#2026"}
+            )
+            record(
+                "Admin Individual Staff Account Creation, Password Assignment & Deactivation",
+                st_usr_doc == 403
+                and st_usr_adm == 200
+                and st_usr_cr == 201
+                and st_n2_alerts == 200
+                and st_n2_bill == 403
+                and st_n2_reset == 200
+                and st_n2_deact == 200
+                and st_n2_blocked == 403,
+                f"doc_403={st_usr_doc}, created={st_usr_cr}, nurse2_alerts={st_n2_alerts}/bill={st_n2_bill}, reset={st_n2_reset}, deactivated_login={st_n2_blocked}",
+            )
+
+            # 58. Role-Clean /staff Isolation & Dedicated Hardened /patient Portal
+            st_pat_pg, h_pat_pg, b_pat_pg = http_req(port, "GET", "/patient")
+            st_stf_iso, _, b_stf_iso = http_req(port, "GET", "/staff")
+            staff_clean_only = (
+                st_stf_iso == 200
+                and "portal-login-card" in b_stf_iso
+                and 'id="view-public"' not in b_stf_iso
+                and 'id="view-security"' not in b_stf_iso
+                and 'id="view-patient"' not in b_stf_iso
+                and 'id="demo-role-box"' not in b_stf_iso
+                and 'id="admin-audit-panel"' not in b_stf_iso
+            )
+            patient_isolated = (
+                st_pat_pg == 200
+                and "no-store" in h_pat_pg.get("cache-control", "")
+                and "noindex" in h_pat_pg.get("x-robots-tag", "")
+                and "patient-login-form" in b_pat_pg
+                and "portal-login-card" not in b_pat_pg
+            )
+            record(
+                "Role-Isolated /staff Surface & Dedicated Hardened /patient Route",
+                staff_clean_only and patient_isolated,
+                f"staff_clean_only={staff_clean_only}, patient_isolated={patient_isolated}",
             )
 
             # 13. Rate limiting enforcement

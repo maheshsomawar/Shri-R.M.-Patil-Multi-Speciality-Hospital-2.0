@@ -1,9 +1,9 @@
 # SECURITY_AUDIT_REPORT.md — Shri R.M. Patil Multi Speciality Hospital 2.0
 
 **Audit Date:** 2026-11-28 (`Asia/Kolkata`)  
-**Scope:** Authorized local source-code & automated API regression audit of `server.py`, `db.py`, `migrations.py`, `backup_db.py`, `db_optimize.py`, `public/index.html`, `public/staff.html`, `public/admin.html`, `public/404.html`, `public/assets/*`, `Dockerfile`, `docker-compose.yml`, and `.github/workflows/ci.yml`.  
+**Scope:** Authorized local source-code & automated API regression audit of `server.py`, `db.py`, `migrations.py`, `backup_db.py`, `db_optimize.py`, `public/index.html`, `public/patient.html`, `public/staff.html`, `public/admin.html`, `public/404.html`, `public/assets/*`, `Dockerfile`, `docker-compose.yml`, and `.github/workflows/ci.yml`.  
 **References:** OWASP Top 10 (2021) & OWASP ASVS Level 2 (Authentication, Access Control, Input Validation, Cryptography, Error Handling).  
-**Final Automated Regression Suite (`python security_audit.py`):** **55 / 55 PASS, 0 FAIL**.
+**Final Automated Regression Suite (`python security_audit.py`):** **58 / 58 PASS, 0 FAIL**.
 
 ## Confirmed Vulnerabilities Found & Remediated
 
@@ -22,6 +22,7 @@
 | 11 | Public Appointment Status Lookup Privacy & Rate Limit | **HIGH** | `db.py`, `server.py` | Public status check needed 2-factor matching without leaking clinical notes, PII, URL mobile parameters, or permitting enumeration. | Required `POST /api/appointments/check` with BOTH exact `appointment_number` + normalized mobile (`405` `Allow: POST` on GET), returned uniform `404`, omitted clinical notes/QR/mobile, and rate-limited bursts (`429`). Added Checks 46–47, 50, 52. | **PASS** (`zero_pii_leak`, `405`/`429`) |
 | 12 | Public vs Staff Route Isolation & Caching Split | **MEDIUM** | `public/index.html`, `public/staff.html`, `server.py` | Separating patient-facing `/` from internal staff portals prevents credential forms, blocking CDN JS, or internal routes from exposing or slowing public traffic, while preventing shared caching of internal pages. | Isolated `/` + immutable gzipped `/assets/*` (ETag `304`, zero `/staff` links), served `/staff` & `/admin` with `Cache-Control: no-store, private` + `X-Robots-Tag: noindex`, updated `robots.txt`, and added branded `404.html`. Added Checks 48, 51, 53, 55. | **PASS** (cache boundary & isolation) |
 | 13 | Anti-Spoofing & Idempotent Booking Guard | **MEDIUM** | `server.py` | Unconditional trust of `X-Real-IP` bypasses IP rate limits; double-clicks can trigger duplicate slots. | Honored `X-Real-IP` only when `TRUST_PROXY=true` on loopback peers, normalized `+91` mobiles, and cached booking responses per `Idempotency-Key`. Added Checks 49, 54. | **PASS** (`429` anti-spoof, replay `200`) |
+| 14 | Per-User Password Rotation & Strict `/staff` vs `/patient` Portal Isolation | **HIGH** | `migrations.py`, `db.py`, `server.py`, `public/staff.html`, `public/patient.html`, `public/admin.html` | Mixed UI tabs on `/staff` exposed public/patient/security-lab panes alongside clinical logins, and non-env staff accounts needed self-service password rotation plus Admin user provisioning/deactivation. | Moved Patient Portal to hardened `/patient`, removed public/patient/security-lab/demo/audit panels from `/staff` with strict per-role UI scoping, and added `POST /api/auth/change-password` + Admin user/password/active management endpoints (`/api/admin/users*`). Added Checks 56–58. | **PASS** (`401`/`403` isolation, scrypt verified) |
 
 ## Remaining Risks & Pre-Production Requirements
 - **CRITICAL (Configuration):** Production deployment requires strong unique secrets in `.env` (`SESSION_SECRET`, staff passwords, live Razorpay & SMS keys), `SECURE_COOKIES=true`, `DEBUG=false`, and TLS/HTTPS via Caddy/Nginx.

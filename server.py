@@ -51,7 +51,7 @@ DEPARTMENT_TO_DOCTOR = {
 }
 
 ALLOWED_STATUSES = {"pending", "confirmed", "completed", "cancelled"}
-STATIC_ALLOWLIST = {"index.html", "admin.html", "staff.html"}
+STATIC_ALLOWLIST = {"index.html", "admin.html", "staff.html", "patient.html"}
 ASSET_ALLOWLIST = {
     "site.v1.css": ("text/css; charset=utf-8", True),
     "site.v1.js": ("application/javascript; charset=utf-8", True),
@@ -1142,6 +1142,19 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._serve_static("admin.html", no_store=True)
             return
 
+        if path == "/api/admin/users":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") != "admin":
+                self.db.log_audit(session["username"], "UNAUTHORIZED_ADMIN_USERS_LIST", self._client_ip(), 403)
+                self._send_json(403, {"error": "Admin privileges required"})
+                return
+            users = self.db.list_staff_users()
+            self._send_json(200, {"staff_users": users, "count": len(users)})
+            return
+
         if path == "/api/admin/audit":
             session = self._get_session()
             if not session:
@@ -1162,7 +1175,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/robots.txt":
-            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /staff\nDisallow: /api/\n"
+            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /staff\nDisallow: /patient\nDisallow: /api/\n"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(txt)))
@@ -1190,6 +1203,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
 
         if path in ("/staff", "/staff.html"):
             self._serve_static("staff.html", no_store=True)
+            return
+
+        if path in ("/patient", "/patient.html"):
+            self._serve_static("patient.html", no_store=True)
             return
 
         if path.startswith("/assets/"):
@@ -1319,6 +1336,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                     self.server._login_failures[username].append(now_m)  # type: ignore[attr-defined]
                 self.db.log_audit(username or "anonymous", "LOGIN_FAILED", self._client_ip(), 401)
                 self._send_json(401, {"error": "Invalid username or password"})
+                return
+            if int(user.get("active", 1)) == 0:
+                self.db.log_audit(username, "LOGIN_DEACTIVATED_ACCOUNT", self._client_ip(), 403)
+                self._send_json(403, {"error": "This account is deactivated. Contact Hospital Administrator."})
                 return
             with self.server._login_lock:  # type: ignore[attr-defined]
                 self.server._login_failures[username].clear()  # type: ignore[attr-defined]
@@ -1990,6 +2011,117 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(201, {"message": "Refund processed", "refund": rec})
             return
 
+        # Authenticated Self-Service Password Change (Any Active Role + CSRF)
+        if path == "/api/auth/change-password":
+            if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
+                return
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            cur_pw = str(body.get("current_password", ""))
+            new_pw = str(body.get("new_password", ""))
+            if not cur_pw or len(new_pw) < 8 or not re.search(r"[A-Za-z]", new_pw) or not re.search(r"\d", new_pw):
+                self._send_json(400, {"error": "Current password and a strong new password (8+ chars, letter + number) are required."})
+                return
+            if hmac.compare_digest(cur_pw, new_pw):
+                self._send_json(400, {"error": "New password must differ from current password."})
+                return
+            ok, reason = self.db.change_user_password(session["username"], cur_pw, new_pw)
+            if not ok:
+                code = 401 if reason == "wrong_current" else 404
+                self.db.log_audit(session["username"], "PASSWORD_CHANGE_FAILED", self._client_ip(), code)
+                self._send_json(code, {"error": "Current password is incorrect." if code == 401 else "Account not found."})
+                return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[session["username"]].clear()  # type: ignore[attr-defined]
+            self.db.log_audit(session["username"], "PASSWORD_CHANGED", self._client_ip(), 200)
+            self._send_json(200, {"message": "Password changed successfully"})
+            return
+
+        # Admin-Only Individual Staff Account Creation & Password Assignment
+        if path == "/api/admin/users":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") != "admin":
+                self.db.log_audit(session["username"], "UNAUTHORIZED_ADMIN_USER_CREATE", self._client_ip(), 403)
+                self._send_json(403, {"error": "Admin privileges required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            uname = str(body.get("username", "")).strip().lower()
+            full_name = sanitize_text(str(body.get("full_name", "")), 80)
+            role = str(body.get("role", "")).strip().lower()
+            dept = sanitize_text(str(body.get("department", "")), 80)
+            pw = str(body.get("password", ""))
+            if not re.fullmatch(r"[a-z][a-z0-9_]{2,31}", uname):
+                self._send_json(400, {"error": "Username must be 3-32 lowercase letters, numbers, or underscore (start with letter)."})
+                return
+            if not full_name or len(full_name) < 2:
+                self._send_json(400, {"error": "Full name is required."})
+                return
+            if role not in ("admin", "doctor", "receptionist", "nurse", "pharmacist", "lab_tech", "billing"):
+                self._send_json(400, {"error": "Invalid staff role."})
+                return
+            if len(pw) < 8 or not re.search(r"[A-Za-z]", pw) or not re.search(r"\d", pw):
+                self._send_json(400, {"error": "Password must be 8+ characters with a letter and a number."})
+                return
+            created = self.db.create_staff_user(uname, full_name, role, dept, pw)
+            if not created:
+                self._send_json(409, {"error": "Username already exists."})
+                return
+            self.db.log_audit(session["username"], f"ADMIN_CREATE_STAFF:{uname}:{role}", self._client_ip(), 201)
+            self._send_json(201, {"message": "Staff account created", "user": created})
+            return
+
+        if path == "/api/admin/users/reset-password":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") != "admin":
+                self.db.log_audit(session["username"], "UNAUTHORIZED_ADMIN_PW_RESET", self._client_ip(), 403)
+                self._send_json(403, {"error": "Admin privileges required"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+            target_u = str(body.get("username", "")).strip().lower()
+            new_pw = str(body.get("new_password", ""))
+            if not target_u or len(new_pw) < 8 or not re.search(r"[A-Za-z]", new_pw) or not re.search(r"\d", new_pw):
+                self._send_json(400, {"error": "Valid username and new password (8+ chars, letter + number) required."})
+                return
+            ok = self.db.admin_reset_user_password(target_u, new_pw)
+            if not ok:
+                self._send_json(404, {"error": "Staff account not found"})
+                return
+            with self.server._login_lock:  # type: ignore[attr-defined]
+                self.server._login_failures[target_u].clear()  # type: ignore[attr-defined]
+            self.db.log_audit(session["username"], f"ADMIN_RESET_PASSWORD:{target_u}", self._client_ip(), 200)
+            self._send_json(200, {"message": f"Password updated for {target_u}"})
+            return
+
         # Save/Update User Gmail & Phone for Password Recovery (Authenticated + CSRF)
         if path == "/api/auth/contact-info":
             session = self._get_session()
@@ -2377,6 +2509,39 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             self.db.log_audit(session["username"], "PATIENT_PROFILE_UPDATE", self._client_ip(), 200)
             self._send_json(200, {"message": "Profile updated"})
+            return
+
+        if path.startswith("/api/admin/users/"):
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            csrf_hdr = self.headers.get("X-CSRF-Token", "")
+            if not hmac.compare_digest(csrf_hdr, session.get("csrf", "")):
+                self._send_json(403, {"error": "Invalid CSRF token"})
+                return
+            if session.get("role") != "admin":
+                self.db.log_audit(session["username"], "UNAUTHORIZED_ADMIN_USER_PATCH", self._client_ip(), 403)
+                self._send_json(403, {"error": "Admin privileges required"})
+                return
+            target_u = path[len("/api/admin/users/"):].strip("/").lower()
+            if not target_u or "/" in target_u:
+                self._send_json(400, {"error": "Invalid staff username"})
+                return
+            body, err = self._read_json_body()
+            if err or body is None or "active" not in body:
+                self._send_json(400, {"error": err or "Boolean active field required"})
+                return
+            active_val = bool(body.get("active"))
+            if target_u == session["username"] and not active_val:
+                self._send_json(400, {"error": "Cannot deactivate your own signed-in administrator account."})
+                return
+            ok = self.db.admin_set_user_active(target_u, active_val)
+            if not ok:
+                self._send_json(404, {"error": "Staff account not found"})
+                return
+            self.db.log_audit(session["username"], f"ADMIN_SET_ACTIVE:{target_u}:{active_val}", self._client_ip(), 200)
+            self._send_json(200, {"message": "Staff account status updated", "username": target_u, "active": active_val})
             return
 
         if path.startswith("/api/staff/appointments/"):
