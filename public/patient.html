@@ -1,422 +1,293 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description"
-    content="Patient Portal — Shri R.M. Patil Multi Speciality Hospital, Chakur. Sign in with your registered mobile number to view OPD appointments, reschedule or cancel bookings, print official receipts and digital prescriptions, and manage DPDP privacy preferences." />
-  <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230d9488%27/%3E%3Cpath d=%27M16 7v18M7 16h18%27 stroke=%27white%27 stroke-width=%273.5%27 stroke-linecap=%27round%27/%3E%3C/svg%3E" />
+    content="Patient Portal — Shri R.M. Patil Multi Speciality Hospital, Chakur. Sign in with your mobile number to view appointments, reschedule or cancel bookings, print receipts and prescriptions, and manage DPDP privacy consent." />
   <title>Patient Portal — Shri R.M. Patil Multi Speciality Hospital</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
-
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: #071324;
-      color: #e2e8f0;
-    }
-
-    .font-serif-display {
-      font-family: 'Playfair Display', Georgia, serif;
-    }
-
-    .gold-btn {
-      background: linear-gradient(135deg, #d8b54c 0%, #c69d2f 100%);
-      color: #071324;
-    }
-
-    .gold-btn:hover {
-      filter: brightness(1.06);
-    }
-
-    .teal-btn {
-      background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-    }
-
-    .teal-btn:hover {
-      filter: brightness(1.08);
-    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#f1f5f9;color:#0f172a;line-height:1.5;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    button,input,select{font-family:inherit}
+    .hidden{display:none!important}
+    .topbar{position:sticky;top:0;z-index:40;background:#0B1242;color:#fff;border-bottom:1px solid rgba(255,255,255,.12)}
+    .tb-inner{max-width:1160px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-mark{width:40px;height:40px;border-radius:12px;background:#00768A;color:#fff;font-weight:900;font-size:21px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .brand-title{font-weight:800;font-size:15.5px;color:#fff;line-height:1.2}
+    .brand-sub{font-size:11px;color:#5eead4;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    .tb-actions{display:flex;align-items:center;gap:10px}
+    .pill-db{padding:5px 10px;border-radius:999px;background:rgba(16,185,129,.18);border:1px solid rgba(110,231,183,.35);color:#6ee7b7;font-size:11px;font-weight:700}
+    .btn-home{padding:8px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;font-size:12.5px;font-weight:700}
+    .btn-home:hover{background:rgba(255,255,255,.16)}
+    .wrap{flex:1;max-width:1160px;width:100%;margin:0 auto;padding:28px 18px 48px;display:flex;flex-direction:column;gap:22px}
+    .hero-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+    .eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#00768A}
+    .h1{margin:4px 0 6px;font-size:28px;font-weight:900;color:#0B1242}
+    .sub{margin:0;font-size:13.5px;color:#475569;max-width:740px}
+    .sess-bar{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:10px 14px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+    .grid-2{display:grid;grid-template-columns:1fr;gap:20px}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:22px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+    .card-title{margin:0 0 14px;font-size:18px;font-weight:800;color:#0B1242}
+    .fld{margin-bottom:12px}
+    .fld label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#475569;margin-bottom:5px}
+    .inp,.sel{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:13.5px;background:#fff;color:#0f172a}
+    .inp:focus,.sel:focus{outline:2px solid #00768A;border-color:#00768A}
+    .btn-teal{padding:11px 16px;border-radius:10px;border:0;background:#00768A;color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+    .btn-teal:hover{background:#005B6B}
+    .btn-gold{padding:11px 16px;border-radius:10px;border:0;background:#F4B400;color:#0f172a;font-size:13px;font-weight:800;cursor:pointer}
+    .btn-gold:hover{background:#e0a400}
+    .btn-out{padding:7px 12px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;font-weight:700;cursor:pointer}
+    .btn-red{padding:7px 12px;border-radius:9px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;font-size:12px;font-weight:700;cursor:pointer}
+    .err-box{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:10px}
+    .ok-box{background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:10px}
+    .row-item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0}
+    .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;background:#ccfbf1;color:#115e59}
+    .link-btn{background:none;border:0;color:#00768A;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+    .footer{background:#fff;border-top:1px solid #e2e8f0;padding:18px;font-size:12.5px;color:#64748b}
+    .ft-inner{max-width:1160px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+    .modal-bg{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:16px}
+    .modal-box{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.3);max-height:85vh;overflow-y:auto}
+    #toast-container{position:fixed;bottom:18px;right:18px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:360px}
+    .toast{border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#fff;box-shadow:0 10px 25px rgba(0,0,0,.22);background:#00768A}
+    .toast.red{background:#dc2626}.toast.amber{background:#b45309}
+    @media(min-width:768px){.grid-2{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
-
-<body class="antialiased selection:bg-teal-500/30 selection:text-teal-200 min-h-screen flex flex-col">
-  <a href="#patient-main"
-    class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-600 focus:text-white focus:font-bold">Skip
-    to patient portal</a>
-
-  <!-- Toast Notification -->
-  <div id="toast-container" role="status" aria-live="polite"
-    class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+<body>
+  <div id="toast-container" role="status" aria-live="polite"></div>
 
   <!-- Legal & Privacy Policy Modal -->
-  <div id="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-modal-title"
-    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div
-      class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
-      <div class="flex items-start justify-between gap-3">
-        <h3 id="policy-modal-title" class="font-serif-display text-xl font-bold text-white">Hospital Policy</h3>
-        <button id="policy-modal-close" type="button" aria-label="Close policy dialog"
-          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+  <div id="policy-modal" role="dialog" aria-modal="true" class="hidden modal-bg">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 id="policy-modal-title" style="margin:0;font-size:17px;font-weight:800;color:#0B1242">Hospital Policy</h3>
+        <button id="policy-modal-close" type="button" class="btn-out">Close</button>
       </div>
-      <div id="policy-modal-body" class="text-xs text-slate-300 leading-relaxed space-y-3"></div>
+      <div id="policy-modal-body" style="font-size:13px;color:#334155;line-height:1.6"></div>
     </div>
   </div>
 
-  <!-- Patient Reschedule Appointment Modal -->
-  <div id="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="resched-modal-title"
-    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-[#0d1c31] border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-start justify-between gap-3">
+  <!-- Reschedule Appointment Modal -->
+  <div id="reschedule-modal" role="dialog" aria-modal="true" class="hidden modal-bg">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
         <div>
-          <div class="text-[11px] font-bold uppercase tracking-wider text-teal-400">Atomic Slot Swap</div>
-          <h3 id="resched-modal-title" class="font-serif-display text-xl font-bold text-white mt-0.5">Reschedule
-            Appointment</h3>
-          <p id="resched-modal-meta" class="text-xs text-slate-400 mt-0.5"></p>
+          <div class="eyebrow">Atomic Slot Swap</div>
+          <h3 style="margin:2px 0 0;font-size:18px;font-weight:800;color:#0B1242">Reschedule Appointment</h3>
+          <p id="resched-modal-meta" style="margin:4px 0 0;font-size:12px;color:#64748b"></p>
         </div>
-        <button id="resched-modal-close" type="button"
-          class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">✕</button>
+        <button id="resched-modal-close" type="button" class="btn-out">X</button>
       </div>
-      <form id="resched-form" class="space-y-3">
-        <div>
-          <label for="resched-date"
-            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">New Appointment
-            Date</label>
-          <input id="resched-date" type="date" required
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400" />
-        </div>
-        <div>
-          <label for="resched-slot"
-            class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Available Time Slot
-            (IST)</label>
-          <select id="resched-slot" required
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-400"></select>
-        </div>
-        <div id="resched-error"
-          class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
-        <div class="flex items-center justify-end gap-2 pt-1">
-          <button id="resched-cancel-btn" type="button"
-            class="px-4 py-2 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800">Cancel</button>
-          <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white shadow">Confirm
-            Reschedule</button>
+      <form id="resched-form">
+        <div class="fld"><label for="resched-date">New Appointment Date</label><input id="resched-date" type="date" required class="inp" /></div>
+        <div class="fld"><label for="resched-slot">Available Time Slot (IST)</label><select id="resched-slot" required class="sel"></select></div>
+        <div id="resched-error" class="hidden err-box"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button id="resched-cancel-btn" type="button" class="btn-out">Cancel</button>
+          <button type="submit" class="btn-teal">Confirm Reschedule</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Top Navigation -->
-  <header class="sticky top-0 z-40 bg-[#071324]/95 backdrop-blur border-b border-slate-800/80">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-      <a href="/" class="flex items-center gap-3 text-left group shrink-0">
-        <div
-          class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-300/30">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
-          </svg>
-        </div>
+  <header class="topbar">
+    <div class="tb-inner">
+      <a href="/" class="brand">
+        <div class="brand-mark">+</div>
         <div>
-          <div
-            class="font-serif-display text-white font-bold text-base sm:text-lg leading-tight group-hover:text-teal-300 transition">
-            Shri R.M. Patil Hospital</div>
-          <div class="text-[10px] tracking-[0.18em] text-[#d8b54c] uppercase font-semibold">Patient Portal</div>
+          <div class="brand-title">Shri R.M. Patil Hospital</div>
+          <div class="brand-sub">Patient Portal</div>
         </div>
       </a>
-
-      <div class="flex items-center gap-2.5">
-        <span id="live-db-pill"
-          class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold">Connecting...</span>
-        <a href="/"
-          class="px-3 py-1.5 rounded-md border border-slate-700 text-xs font-semibold text-teal-300 hover:bg-slate-800 inline-flex items-center">&#8592;
-          Book OPD / Home</a>
+      <div class="tb-actions">
+        <span id="live-db-pill" class="pill-db">Connecting...</span>
+        <a href="/" class="btn-home">&larr; Book OPD / Home</a>
       </div>
     </div>
   </header>
 
-  <main id="patient-main" class="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-6xl w-full mx-auto space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
+  <main id="patient-main" class="wrap">
+    <div class="hero-head">
       <div>
-        <div class="text-xs font-bold tracking-[0.18em] uppercase text-teal-400">Patient Privacy · Receipts ·
-          Prescriptions</div>
-        <h1 class="font-serif-display text-3xl font-bold text-white mt-1">Patient Portal</h1>
-        <p class="text-sm text-slate-400 mt-1">Register or sign in with your mobile number to view your appointments,
-          reschedule or cancel bookings, print official hospital letterhead receipts &amp; prescriptions, and manage
-          DPDP privacy consent.
-        </p>
+        <div class="eyebrow">Patient Privacy &bull; Receipts &bull; Prescriptions</div>
+        <h1 class="h1">Patient Portal</h1>
+        <p class="sub">Register or sign in with your mobile number to view your appointments, reschedule or cancel bookings, print official receipts and prescriptions, and manage DPDP privacy consent.</p>
       </div>
-      <div id="patient-session-bar"
-        class="hidden items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
+      <div id="patient-session-bar" class="hidden sess-bar">
         <div>
-          <div id="pat-name-hdr" class="text-sm font-bold text-white"></div>
-          <div id="pat-code-hdr" class="text-[11px] font-mono text-teal-400"></div>
+          <div id="pat-name-hdr" style="font-size:14px;font-weight:800;color:#0B1242"></div>
+          <div id="pat-code-hdr" style="font-size:11.5px;font-family:monospace;color:#00768A"></div>
         </div>
-        <button id="patient-logout-btn" type="button"
-          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/50 text-xs font-semibold text-slate-200 border border-slate-700">Sign
-          Out</button>
+        <button id="patient-logout-btn" type="button" class="btn-red">Sign Out</button>
       </div>
     </div>
 
-    <!-- Patient Auth Cards (Logged Out) -->
-    <div id="patient-auth-grid" class="grid md:grid-cols-2 gap-6">
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h2 class="font-serif-display text-xl font-bold text-white">Existing Patient Sign-In</h2>
-        <form id="patient-login-form" class="space-y-3">
-          <div>
-            <label for="pat-login-mobile"
-              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Registered Mobile
-              Number</label>
-            <input id="pat-login-mobile" type="tel" required placeholder="10-digit mobile"
-              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
-          </div>
-          <div>
-            <label for="pat-login-pass"
-              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Password</label>
-            <input id="pat-login-pass" type="password" required placeholder="••••••••"
-              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
-          </div>
-          <div id="pat-login-err"
-            class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200"></div>
-          <button type="submit" class="w-full teal-btn py-2.5 rounded-lg text-xs font-bold text-white">Sign In to
-            Patient Portal</button>
+    <!-- Logged-Out Login & Registration -->
+    <div id="patient-auth-grid" class="grid-2">
+      <div class="card">
+        <h2 class="card-title">Existing Patient Sign-In</h2>
+        <form id="patient-login-form">
+          <div class="fld"><label for="pat-login-mobile">Registered Mobile Number</label><input id="pat-login-mobile" type="tel" required placeholder="10-digit mobile" class="inp" /></div>
+          <div class="fld"><label for="pat-login-pass">Password</label><input id="pat-login-pass" type="password" required placeholder="Enter your password" class="inp" /></div>
+          <div id="pat-login-err" class="hidden err-box"></div>
+          <button type="submit" class="btn-teal" style="width:100%">Sign In to Patient Portal</button>
         </form>
-
-        <div class="border-t border-slate-800/80 pt-3">
-          <button id="pat-toggle-forgot-btn" type="button"
-            class="text-xs font-semibold text-teal-300 hover:text-teal-200 underline">Forgot Password? Reset via Gmail
-            or Mobile OTP</button>
-          <div id="pat-forgot-panel" class="hidden mt-3 rounded-xl bg-slate-900/90 border border-slate-700 p-4 space-y-3">
-            <form id="pat-forgot-request-form" class="space-y-2">
-              <div class="grid sm:grid-cols-2 gap-2">
-                <input id="pat-fp-mobile" type="tel" required placeholder="Registered 10-digit mobile"
-                  class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-                <input id="pat-fp-contact" type="text" required placeholder="Recovery Gmail or mobile"
-                  class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-              </div>
-              <button type="submit"
-                class="w-full px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white">Request
-                6-Digit OTP</button>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0">
+          <button id="pat-toggle-forgot-btn" type="button" class="link-btn">Forgot Password? Reset via Gmail or Mobile OTP</button>
+          <div id="pat-forgot-panel" class="hidden" style="margin-top:12px;padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0">
+            <form id="pat-forgot-request-form" style="display:grid;gap:8px;margin-bottom:10px">
+              <input id="pat-fp-mobile" type="tel" required placeholder="Registered 10-digit mobile" class="inp" />
+              <input id="pat-fp-contact" type="text" required placeholder="Recovery Gmail or mobile" class="inp" />
+              <button type="submit" class="btn-teal">Request 6-Digit OTP</button>
             </form>
-            <div id="pat-fp-status" class="hidden text-[11px] font-mono text-teal-300"></div>
-            <form id="pat-forgot-reset-form" class="grid sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800">
-              <input id="pat-rp-code" type="text" required pattern="[0-9]{6}" maxlength="6" placeholder="6-digit OTP"
-                class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs font-mono text-white" />
-              <input id="pat-rp-pass" type="password" required minlength="8" placeholder="New password (8+)"
-                class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-              <button type="submit" class="gold-btn py-2 rounded-lg text-xs font-bold">Reset Password</button>
+            <div id="pat-fp-status" class="hidden" style="font-size:12px;font-family:monospace;color:#00768A;margin-bottom:8px"></div>
+            <form id="pat-forgot-reset-form" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px">
+              <input id="pat-rp-code" type="text" required pattern="[0-9]{6}" maxlength="6" placeholder="6-digit OTP" class="inp" />
+              <input id="pat-rp-pass" type="password" required minlength="8" placeholder="New password (8+)" class="inp" />
+              <button type="submit" class="btn-gold">Reset</button>
             </form>
           </div>
         </div>
       </div>
 
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h2 class="font-serif-display text-xl font-bold text-white">New Patient Registration</h2>
-        <form id="patient-register-form" class="space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label for="pat-reg-first"
-                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">First Name</label>
-              <input id="pat-reg-first" type="text" required placeholder="First name"
-                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label for="pat-reg-last"
-                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Last Name</label>
-              <input id="pat-reg-last" type="text" required placeholder="Last name"
-                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
-            </div>
+      <div class="card">
+        <h2 class="card-title">New Patient Registration</h2>
+        <form id="patient-register-form">
+          <div class="grid-2" style="gap:10px">
+            <div class="fld"><label for="pat-reg-first">First Name</label><input id="pat-reg-first" type="text" required placeholder="First name" class="inp" /></div>
+            <div class="fld"><label for="pat-reg-last">Last Name</label><input id="pat-reg-last" type="text" required placeholder="Last name" class="inp" /></div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label for="pat-reg-mobile"
-                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mobile (10
-                digits)</label>
-              <input id="pat-reg-mobile" type="tel" required placeholder="98xxxxxxxx"
-                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label for="pat-reg-blood"
-                class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Blood Group
-                (Optional)</label>
-              <input id="pat-reg-blood" type="text" placeholder="e.g. O+"
-                class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
-            </div>
+          <div class="grid-2" style="gap:10px">
+            <div class="fld"><label for="pat-reg-mobile">Mobile (10 digits)</label><input id="pat-reg-mobile" type="tel" required placeholder="98xxxxxxxx" class="inp" /></div>
+            <div class="fld"><label for="pat-reg-blood">Blood Group (Optional)</label><input id="pat-reg-blood" type="text" placeholder="e.g. O+" class="inp" /></div>
           </div>
-          <div>
-            <label for="pat-reg-pass"
-              class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Your Own Password (8+
-              chars, letter &amp; number)</label>
-            <input id="pat-reg-pass" type="password" required minlength="8" placeholder="Choose a strong password"
-              class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-sm text-white" />
-          </div>
-          <div id="pat-reg-msg" class="hidden rounded-lg px-3 py-2 text-xs"></div>
-          <button type="submit" class="w-full gold-btn py-2.5 rounded-lg text-xs font-bold">Create Patient
-            Account</button>
+          <div class="fld"><label for="pat-reg-pass">Your Own Password (8+ chars, letter &amp; number)</label><input id="pat-reg-pass" type="password" required minlength="8" placeholder="Choose a strong password" class="inp" /></div>
+          <div id="pat-reg-msg" class="hidden"></div>
+          <button type="submit" class="btn-gold" style="width:100%">Create Patient Account</button>
         </form>
       </div>
     </div>
 
-    <!-- Logged-In Patient Dashboard -->
-    <div id="patient-dashboard" class="hidden space-y-6">
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="font-serif-display text-xl font-bold text-white">My Appointments &amp; Official Receipts</h2>
-          <div class="flex items-center gap-2">
-            <a href="/#booking-section"
-              class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-200 hover:bg-amber-500/30">+
-              New Booking</a>
-            <button id="pat-refresh-btn" type="button"
-              class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-teal-300 hover:bg-slate-700">Refresh</button>
+    <!-- Logged-In Dashboard -->
+    <div id="patient-dashboard" class="hidden" style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px">
+          <h2 class="card-title" style="margin:0">My Appointments &amp; Official Receipts</h2>
+          <div style="display:flex;gap:8px">
+            <a href="/#booking-section" class="btn-gold">+ New Booking</a>
+            <button id="pat-refresh-btn" type="button" class="btn-out">Refresh</button>
           </div>
         </div>
-        <div id="pat-appts-list" class="space-y-2.5 text-xs"></div>
+        <div id="pat-appts-list" style="display:flex;flex-direction:column;gap:10px;font-size:13px"></div>
       </div>
 
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
-          <h2 class="font-serif-display text-lg font-bold text-white">My Digital Prescriptions (Printable)</h2>
-          <div id="pat-rx-list" class="space-y-2 text-xs"></div>
+      <div class="grid-2">
+        <div class="card">
+          <h2 class="card-title">My Digital Prescriptions (Printable)</h2>
+          <div id="pat-rx-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px"></div>
         </div>
-
-        <div class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
-          <h2 class="font-serif-display text-lg font-bold text-white">DPDP Privacy &amp; Consent Controls</h2>
-          <p class="text-xs text-slate-400">Manage optional SMS reminder consent or submit a data access, correction, or
-            erasure request.</p>
-          <div class="flex flex-wrap gap-2">
-            <button id="pat-consent-grant" type="button"
-              class="px-3 py-1.5 rounded-lg bg-emerald-600/25 border border-emerald-500/40 text-emerald-200 text-xs font-semibold">Grant
-              SMS Consent</button>
-            <button id="pat-consent-withdraw" type="button"
-              class="px-3 py-1.5 rounded-lg bg-amber-600/25 border border-amber-500/40 text-amber-200 text-xs font-semibold">Withdraw
-              SMS Consent</button>
+        <div class="card">
+          <h2 class="card-title">DPDP Privacy &amp; Consent Controls</h2>
+          <p style="font-size:12.5px;color:#475569;margin-top:0">Manage optional SMS reminder consent or submit an access, correction, or erasure request.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <button id="pat-consent-grant" type="button" class="btn-teal">Grant SMS Consent</button>
+            <button id="pat-consent-withdraw" type="button" class="btn-out">Withdraw Consent</button>
           </div>
-          <div class="grid sm:grid-cols-12 gap-2 pt-1">
-            <select id="pat-privacy-type"
-              class="sm:col-span-4 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px">
+            <select id="pat-privacy-type" class="sel">
               <option value="access">Data Access</option>
               <option value="correction">Correction</option>
               <option value="erasure">Erasure</option>
               <option value="consent_withdrawal">Consent Withdrawal</option>
             </select>
-            <input id="pat-privacy-details" type="text" maxlength="300" placeholder="Optional details..."
-              class="sm:col-span-5 rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
-            <button id="pat-privacy-erasure" type="button"
-              class="sm:col-span-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold">Submit
-              Request</button>
+            <input id="pat-privacy-details" type="text" maxlength="300" placeholder="Optional details..." class="inp" />
+            <button id="pat-privacy-erasure" type="button" class="btn-out">Submit</button>
           </div>
-          <div id="pat-privacy-status" class="text-xs text-teal-300 font-mono"></div>
-          <div id="pat-privacy-list" class="space-y-1.5 max-h-32 overflow-y-auto text-[11px]"></div>
+          <div id="pat-privacy-status" style="font-size:12px;font-family:monospace;color:#00768A"></div>
+          <div id="pat-privacy-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;font-size:12px"></div>
         </div>
       </div>
 
-      <!-- Patient Account Password & Recovery Contact -->
-      <div class="grid md:grid-cols-2 gap-6">
-        <form id="pat-change-password-form" class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
-          <h2 class="font-serif-display text-lg font-bold text-white">Change My Password</h2>
-          <div class="grid sm:grid-cols-2 gap-2.5">
-            <input id="pat-cp-current" type="password" required placeholder="Current password"
-              class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-            <input id="pat-cp-new" type="password" required minlength="8" placeholder="New password (8+, letter + digit)"
-              class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+      <div class="grid-2">
+        <form id="pat-change-password-form" class="card">
+          <h2 class="card-title">Change My Password</h2>
+          <div class="grid-2" style="gap:10px;margin-bottom:10px">
+            <input id="pat-cp-current" type="password" required placeholder="Current password" class="inp" />
+            <input id="pat-cp-new" type="password" required minlength="8" placeholder="New password (8+, letter + digit)" class="inp" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <span id="pat-cp-status" class="text-[11px] font-mono text-teal-300"></span>
-            <button type="submit" class="gold-btn px-4 py-2 rounded-lg text-xs font-bold">Update Password</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <span id="pat-cp-status" style="font-size:12px;font-family:monospace;color:#00768A"></span>
+            <button type="submit" class="btn-gold">Update Password</button>
           </div>
         </form>
 
-        <form id="pat-recovery-form" class="bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-3">
-          <h2 class="font-serif-display text-lg font-bold text-white">Recovery Contact (Optional)</h2>
-          <div class="grid sm:grid-cols-2 gap-2.5">
-            <input id="pat-rec-email" type="email" maxlength="120" placeholder="yourname@gmail.com"
-              class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-            <input id="pat-rec-phone" type="tel" maxlength="15" placeholder="10-digit mobile"
-              class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+        <form id="pat-recovery-form" class="card">
+          <h2 class="card-title">Recovery Contact (Optional)</h2>
+          <div class="grid-2" style="gap:10px;margin-bottom:10px">
+            <input id="pat-rec-email" type="email" maxlength="120" placeholder="yourname@gmail.com" class="inp" />
+            <input id="pat-rec-phone" type="tel" maxlength="15" placeholder="10-digit mobile" class="inp" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <span id="pat-rec-status" class="text-[11px] font-mono text-teal-300"></span>
-            <button type="submit" class="teal-btn px-4 py-2 rounded-lg text-xs font-bold text-white">Save Contact</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <span id="pat-rec-status" style="font-size:12px;font-family:monospace;color:#00768A"></span>
+            <button type="submit" class="btn-teal">Save Contact</button>
           </div>
         </form>
       </div>
     </div>
   </main>
 
-  <footer class="border-t border-slate-800/80 py-6 px-4 text-center text-xs text-slate-400">
-    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+  <footer class="footer">
+    <div class="ft-inner">
       <span>Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care, Chakur</span>
-      <div class="flex flex-wrap items-center gap-3">
-        <button type="button" data-policy="privacy" class="policy-link hover:text-teal-300 underline">Privacy Policy</button>
-        <button type="button" data-policy="terms" class="policy-link hover:text-teal-300 underline">Terms</button>
-        <button type="button" data-policy="cookies" class="policy-link hover:text-teal-300 underline">Cookies</button>
-        <button type="button" data-policy="refund" class="policy-link hover:text-teal-300 underline">Refunds</button>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <button type="button" data-policy="privacy" class="policy-link link-btn">Privacy Policy</button>
+        <button type="button" data-policy="terms" class="policy-link link-btn">Terms</button>
+        <button type="button" data-policy="cookies" class="policy-link link-btn">Cookies</button>
+        <button type="button" data-policy="refund" class="policy-link link-btn">Refunds</button>
       </div>
     </div>
   </footer>
 
   <script>
-    const state = {
-      liveMode: false,
-      csrfToken: "",
-      serverTodayIst: "",
-      patientProfile: null,
-      reschedTarget: null
-    };
-
+    const state = { liveMode: false, csrfToken: "", serverTodayIst: "", patientProfile: null, reschedTarget: null };
     function escHtml(str) {
-      return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#x27;");
+      return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#x27;");
     }
-
     function showToast(msg, tone = "teal") {
-      const container = document.getElementById("toast-container");
-      const colors = {
-        teal: "bg-teal-950/95 border-teal-500/50 text-teal-100",
-        red: "bg-red-950/95 border-red-500/50 text-red-100",
-        amber: "bg-amber-950/95 border-amber-500/50 text-amber-100"
-      };
+      const box = document.getElementById("toast-container");
       const el = document.createElement("div");
-      el.className = `pointer-events-auto rounded-xl border px-4 py-3 text-xs font-medium shadow-xl transition ${colors[tone] || colors.teal}`;
+      el.className = "toast" + (tone === "red" ? " red" : (tone === "amber" ? " amber" : ""));
       el.textContent = msg;
-      container.appendChild(el);
-      setTimeout(() => el.remove(), 3800);
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3600);
     }
-
     async function apiFetch(url, options = {}) {
       const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
-      if (state.csrfToken && ["POST", "PATCH", "PUT", "DELETE"].includes((options.method || "GET").toUpperCase())) {
+      if (state.csrfToken && ["POST","PATCH","PUT","DELETE"].includes((options.method || "GET").toUpperCase())) {
         headers["X-CSRF-Token"] = state.csrfToken;
       }
       const res = await fetch(url, Object.assign({}, options, { headers, credentials: "same-origin" }));
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok, status: res.status, data };
     }
-
     async function loadSlotsIntoSelect(docUsername, dt, selectEl) {
       if (!selectEl) return;
       selectEl.innerHTML = `<option value="">Loading live SQLite slots...</option>`;
       const res = await apiFetch(`/api/doctors/${encodeURIComponent(docUsername)}/slots?date=${encodeURIComponent(dt)}`);
-      if (!res.ok) {
-        selectEl.innerHTML = `<option value="">${escHtml(res.data.error || "No slots available")}</option>`;
-        return;
-      }
+      if (!res.ok) { selectEl.innerHTML = `<option value="">${escHtml(res.data.error || "No slots available")}</option>`; return; }
       const open = Array.isArray(res.data.available_slots) ? res.data.available_slots : [];
-      if (res.data.available && open.length) {
-        selectEl.innerHTML = open.map(sl => `<option value="${escHtml(sl)}">${escHtml(sl)} IST (Available)</option>`).join("");
-      } else {
-        selectEl.innerHTML = `<option value="">${escHtml(res.data.reason || `All slots booked for ${dt}`)}</option>`;
-      }
+      selectEl.innerHTML = (res.data.available && open.length)
+        ? open.map(sl => `<option value="${escHtml(sl)}">${escHtml(sl)} IST (Available)</option>`).join("")
+        : `<option value="">${escHtml(res.data.reason || `All slots booked for ${dt}`)}</option>`;
     }
-
-    function closeReschedModal() {
-      state.reschedTarget = null;
-      document.getElementById("reschedule-modal").classList.add("hidden");
-    }
-
+    function closeReschedModal() { state.reschedTarget = null; document.getElementById("reschedule-modal").classList.add("hidden"); }
     async function openReschedModal(appt) {
       state.reschedTarget = appt;
       document.getElementById("resched-modal-meta").textContent = `${appt.apptNo} · Current: ${appt.date}`;
@@ -428,14 +299,12 @@
       document.getElementById("reschedule-modal").classList.remove("hidden");
       await loadSlotsIntoSelect(appt.doctor || "dr_snehal", dateInput.value, document.getElementById("resched-slot"));
     }
-
     document.getElementById("resched-modal-close").addEventListener("click", closeReschedModal);
     document.getElementById("resched-cancel-btn").addEventListener("click", closeReschedModal);
     document.getElementById("resched-date").addEventListener("change", async function () {
       if (!state.reschedTarget || !this.value) return;
       await loadSlotsIntoSelect(state.reschedTarget.doctor || "dr_snehal", this.value, document.getElementById("resched-slot"));
     });
-
     document.getElementById("resched-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       if (!state.reschedTarget) return;
@@ -443,131 +312,74 @@
       errEl.classList.add("hidden");
       const newDate = document.getElementById("resched-date").value;
       const newSlot = document.getElementById("resched-slot").value;
-      if (!newDate || !newSlot) {
-        errEl.textContent = "Please choose an available date and time slot.";
-        errEl.classList.remove("hidden");
-        return;
-      }
-      const res = await apiFetch(`/api/patient/appointments/${state.reschedTarget.id}/reschedule`, {
-        method: "POST",
-        body: JSON.stringify({ appointment_date: newDate, slot_time: newSlot })
-      });
-      if (!res.ok) {
-        errEl.textContent = `HTTP ${res.status}: ${res.data.error || "Reschedule failed"}`;
-        errEl.classList.remove("hidden");
-        return;
-      }
+      if (!newDate || !newSlot) { errEl.textContent = "Please choose an available date and time slot."; errEl.classList.remove("hidden"); return; }
+      const res = await apiFetch(`/api/patient/appointments/${state.reschedTarget.id}/reschedule`, { method: "POST", body: JSON.stringify({ appointment_date: newDate, slot_time: newSlot }) });
+      if (!res.ok) { errEl.textContent = `HTTP ${res.status}: ${res.data.error || "Reschedule failed"}`; errEl.classList.remove("hidden"); return; }
       closeReschedModal();
-      showToast(`Rescheduled to ${newDate} at ${newSlot} IST!`, "teal");
+      showToast(`Rescheduled to ${newDate} at ${newSlot} IST!`);
       await loadPatientDashboard();
     });
-
     async function loadPatientDashboard() {
       const authGrid = document.getElementById("patient-auth-grid");
       const dash = document.getElementById("patient-dashboard");
       const bar = document.getElementById("patient-session-bar");
       if (!state.patientProfile) {
-        authGrid.classList.remove("hidden");
-        dash.classList.add("hidden");
-        bar.classList.add("hidden");
-        bar.classList.remove("flex");
-        return;
+        authGrid.classList.remove("hidden"); dash.classList.add("hidden"); bar.classList.add("hidden"); return;
       }
-      authGrid.classList.add("hidden");
-      dash.classList.remove("hidden");
-      bar.classList.remove("hidden");
-      bar.classList.add("flex");
+      authGrid.classList.add("hidden"); dash.classList.remove("hidden"); bar.classList.remove("hidden");
       document.getElementById("pat-name-hdr").textContent = `${state.patientProfile.first_name} ${state.patientProfile.last_name}`;
       document.getElementById("pat-code-hdr").textContent = `${state.patientProfile.patient_code} · +91 ${state.patientProfile.mobile}`;
-
       const apBox = document.getElementById("pat-appts-list");
       const rxBox = document.getElementById("pat-rx-list");
-      if (!state.liveMode) {
-        apBox.innerHTML = `<div class="text-slate-400">Run <code>python server.py</code> locally to load live SQLite bookings &amp; printable letterhead receipts.</div>`;
-        return;
-      }
       const apRes = await apiFetch("/api/patient/appointments");
       const appts = (apRes.ok && apRes.data.appointments) ? apRes.data.appointments : [];
       if (!appts.length) {
-        apBox.innerHTML = `<div class="text-slate-400 py-2">No appointments booked yet under your mobile number.</div>`;
+        apBox.innerHTML = `<div style="color:#64748b">No appointments booked yet under your mobile number.</div>`;
       } else {
         apBox.innerHTML = appts.map(a => `
-          <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+          <div class="row-item">
             <div>
-              <div class="font-mono text-teal-300 font-bold">${escHtml(a.appointment_number)} · ${escHtml(a.appointment_date)} ${escHtml(a.slot_time || "")}</div>
-              <div class="text-white font-semibold mt-0.5">${escHtml(a.department)} · <span class="uppercase text-amber-300">${escHtml(a.status)}</span></div>
-              ${a.qr_token ? `<div class="text-[11px] font-mono text-slate-400 mt-0.5">QR: ${escHtml(a.qr_token)}${a.queue_token ? ` · Queue: ${escHtml(a.queue_token)}` : ""}</div>` : ""}
+              <div style="font-family:monospace;font-weight:800;color:#00768A">${escHtml(a.appointment_number)} · ${escHtml(a.appointment_date)} ${escHtml(a.slot_time || "")}</div>
+              <div style="font-weight:700;color:#0f172a;margin-top:2px">${escHtml(a.department)} · <span class="badge">${escHtml(a.status)}</span></div>
+              ${a.qr_token ? `<div style="font-size:11.5px;font-family:monospace;color:#64748b;margin-top:2px">QR: ${escHtml(a.qr_token)}${a.queue_token ? ` · Queue: ${escHtml(a.queue_token)}` : ""}</div>` : ""}
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <a href="/api/receipts/${a.id}/print" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-teal-600/25 border border-teal-500/40 text-teal-200 hover:bg-teal-600 hover:text-white font-semibold">Print Receipt</a>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <a href="/api/receipts/${a.id}/print" target="_blank" rel="noopener" class="btn-out">Print Receipt</a>
               ${a.status !== "cancelled" && a.status !== "completed" ? `
-                <button type="button" data-resched-id="${a.id}" data-doc="${escHtml(a.doctor_username || "")}" data-date="${escHtml(a.appointment_date)}" data-appt-no="${escHtml(a.appointment_number)}" class="pat-resched-btn px-3 py-1.5 rounded-lg bg-sky-600/20 border border-sky-500/40 text-sky-200 hover:bg-sky-600 hover:text-white font-semibold">Reschedule</button>
-                <button type="button" data-cancel-id="${a.id}" class="pat-cancel-btn px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/40 text-red-200 hover:bg-red-600 hover:text-white font-semibold">Cancel</button>
+                <button type="button" data-resched-id="${a.id}" data-doc="${escHtml(a.doctor_username || "")}" data-date="${escHtml(a.appointment_date)}" data-appt-no="${escHtml(a.appointment_number)}" class="pat-resched-btn btn-out">Reschedule</button>
+                <button type="button" data-cancel-id="${a.id}" class="pat-cancel-btn btn-red">Cancel</button>
               ` : ""}
             </div>
           </div>
         `).join("");
         apBox.querySelectorAll(".pat-resched-btn").forEach(btn => {
           btn.addEventListener("click", function () {
-            openReschedModal({
-              id: Number(this.dataset.reschedId),
-              doctor: this.dataset.doc,
-              date: this.dataset.date,
-              apptNo: this.dataset.apptNo
-            });
+            openReschedModal({ id: Number(this.dataset.reschedId), doctor: this.dataset.doc, date: this.dataset.date, apptNo: this.dataset.apptNo });
           });
         });
         apBox.querySelectorAll(".pat-cancel-btn").forEach(btn => {
           btn.addEventListener("click", async function () {
             const r = await apiFetch(`/api/patient/appointments/${this.dataset.cancelId}/cancel`, { method: "POST", body: "{}" });
-            if (r.ok) {
-              showToast("Appointment cancelled and time slot released!", "teal");
-              await loadPatientDashboard();
-            } else {
-              showToast(r.data.error || "Cancel failed", "red");
-            }
+            if (r.ok) { showToast("Appointment cancelled and time slot released!"); await loadPatientDashboard(); }
+            else showToast(r.data.error || "Cancel failed", "red");
           });
         });
       }
-
       const rxRes = await apiFetch("/api/patient/prescriptions");
       const rxs = (rxRes.ok && rxRes.data.prescriptions) ? rxRes.data.prescriptions : [];
       rxBox.innerHTML = rxs.length
-        ? rxs.map(rx => `
-            <div class="flex items-center justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-xl p-3">
-              <div>
-                <div class="font-mono text-teal-300">${escHtml(rx.appointment_number)}</div>
-                <div class="text-slate-200">${escHtml(rx.diagnosis)}</div>
-              </div>
-              <a href="/api/prescriptions/${rx.id}/print" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 font-semibold">Print Rx</a>
-            </div>
-          `).join("")
-        : `<div class="text-slate-400">No digital prescriptions issued yet.</div>`;
-
+        ? rxs.map(rx => `<div class="row-item"><div><strong style="font-family:monospace;color:#00768A">${escHtml(rx.appointment_number)}</strong><div>${escHtml(rx.diagnosis)}</div></div><a href="/api/prescriptions/${rx.id}/print" target="_blank" rel="noopener" class="btn-gold">Print Rx</a></div>`).join("")
+        : `<div style="color:#64748b">No digital prescriptions issued yet.</div>`;
       const privRes = await apiFetch("/api/patient/privacy-requests");
       const privs = (privRes.ok && privRes.data.privacy_requests) ? privRes.data.privacy_requests : [];
-      const privBox = document.getElementById("pat-privacy-list");
-      if (privBox) {
-        privBox.innerHTML = privs.length
-          ? privs.map(p => `
-              <div class="flex items-center justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-lg px-2.5 py-1.5">
-                <span class="font-mono text-teal-300">${escHtml(p.request_code)} · ${escHtml(p.request_type)}</span>
-                <span class="uppercase text-amber-300 font-semibold">${escHtml(p.status || "received")}</span>
-              </div>
-            `).join("")
-          : "";
-      }
+      document.getElementById("pat-privacy-list").innerHTML = privs.map(p =>
+        `<div class="row-item" style="padding:7px 10px"><span style="font-family:monospace;color:#00768A">${escHtml(p.request_code)} · ${escHtml(p.request_type)}</span><span class="badge">${escHtml(p.status || "received")}</span></div>`
+      ).join("");
     }
-
     document.getElementById("patient-register-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const msg = document.getElementById("pat-reg-msg");
       msg.classList.remove("hidden");
-      if (!state.liveMode) {
-        msg.className = "rounded-lg bg-amber-500/15 border border-amber-500/40 px-3 py-2 text-xs text-amber-200";
-        msg.textContent = "Start python server.py locally to register patients into SQLite.";
-        return;
-      }
       const res = await apiFetch("/api/patients/register", {
         method: "POST",
         body: JSON.stringify({
@@ -578,44 +390,27 @@
           password: document.getElementById("pat-reg-pass").value
         })
       });
-      if (!res.ok) {
-        msg.className = "rounded-lg bg-red-500/15 border border-red-500/40 px-3 py-2 text-xs text-red-200";
-        msg.textContent = `HTTP ${res.status}: ${res.data.error || "Registration failed"}`;
-        return;
-      }
-      msg.className = "rounded-lg bg-emerald-500/15 border border-emerald-500/40 px-3 py-2 text-xs text-emerald-200";
+      if (!res.ok) { msg.className = "err-box"; msg.textContent = `HTTP ${res.status}: ${res.data.error || "Registration failed"}`; return; }
+      msg.className = "ok-box";
       msg.textContent = `Registered! Your Patient ID is ${res.data.patient.patient_code}. Now sign in on the left.`;
       document.getElementById("pat-login-mobile").value = res.data.patient.mobile || "";
       this.reset();
-      showToast(`Registered ${res.data.patient.patient_code}!`, "teal");
+      showToast(`Registered ${res.data.patient.patient_code}!`);
     });
-
     document.getElementById("patient-login-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const err = document.getElementById("pat-login-err");
       err.classList.add("hidden");
-      if (!state.liveMode) {
-        err.textContent = "Start python server.py locally to sign into SQLite.";
-        err.classList.remove("hidden");
-        return;
-      }
       const res = await apiFetch("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({
-          username: document.getElementById("pat-login-mobile").value.replace(/[\s-]/g, ""),
-          password: document.getElementById("pat-login-pass").value
-        })
+        body: JSON.stringify({ username: document.getElementById("pat-login-mobile").value.replace(/[\s-]/g, ""), password: document.getElementById("pat-login-pass").value })
       });
-      if (!res.ok) {
-        err.textContent = `HTTP ${res.status}: ${res.data.error || "Login failed"}`;
-        err.classList.remove("hidden");
-        return;
-      }
+      if (!res.ok) { err.textContent = `HTTP ${res.status}: ${res.data.error || "Login failed"}`; err.classList.remove("hidden"); return; }
       if (res.data.user && res.data.user.role !== "patient") {
         state.csrfToken = res.data.csrf_token || "";
         await apiFetch("/api/auth/logout", { method: "POST", body: "{}" });
         state.csrfToken = "";
-        err.textContent = "Staff and doctor accounts must sign in through the dedicated Staff & Doctor Portal.";
+        err.textContent = "Staff and doctor accounts must sign in through /staff.";
         err.classList.remove("hidden");
         return;
       }
@@ -624,23 +419,15 @@
       if (me.ok && me.data.patient) {
         state.patientProfile = me.data.patient;
         this.reset();
-        showToast(`Welcome ${state.patientProfile.first_name}!`, "teal");
+        showToast(`Welcome ${state.patientProfile.first_name}!`);
         loadPatientDashboard();
-      } else {
-        err.textContent = "Please sign in with a patient account.";
-        err.classList.remove("hidden");
-      }
+      } else { err.textContent = "Please sign in with a patient account."; err.classList.remove("hidden"); }
     });
-
     document.getElementById("patient-logout-btn").addEventListener("click", async () => {
       if (state.liveMode) await apiFetch("/api/auth/logout", { method: "POST", body: "{}" });
-      state.patientProfile = null;
-      state.csrfToken = "";
-      loadPatientDashboard();
-      showToast("Signed out cleanly.", "teal");
+      state.patientProfile = null; state.csrfToken = ""; loadPatientDashboard(); showToast("Signed out cleanly.");
     });
     document.getElementById("pat-refresh-btn").addEventListener("click", loadPatientDashboard);
-
     document.getElementById("pat-consent-grant").addEventListener("click", async () => {
       const r = await apiFetch("/api/patient/consent", { method: "POST", body: JSON.stringify({ purpose: "appointment_sms_reminders", granted: true }) });
       document.getElementById("pat-privacy-status").textContent = r.ok ? "SMS reminder consent GRANTED (saved to SQLite)." : (r.data.error || "Error");
@@ -652,113 +439,49 @@
     document.getElementById("pat-privacy-erasure").addEventListener("click", async () => {
       const reqType = (document.getElementById("pat-privacy-type")?.value) || "correction";
       const details = (document.getElementById("pat-privacy-details")?.value.trim()) || "Patient requested review via portal";
-      const r = await apiFetch("/api/patient/privacy-requests", {
-        method: "POST",
-        body: JSON.stringify({ request_type: reqType, details })
-      });
+      const r = await apiFetch("/api/patient/privacy-requests", { method: "POST", body: JSON.stringify({ request_type: reqType, details }) });
       document.getElementById("pat-privacy-status").textContent = r.ok ? `Request recorded: ${r.data.privacy_request.request_code}` : (r.data.error || "Error");
-      if (r.ok) {
-        const dEl = document.getElementById("pat-privacy-details");
-        if (dEl) dEl.value = "";
-        loadPatientDashboard();
-      }
+      if (r.ok) { document.getElementById("pat-privacy-details").value = ""; loadPatientDashboard(); }
     });
-
     document.getElementById("pat-change-password-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const statusEl = document.getElementById("pat-cp-status");
-      const curPw = document.getElementById("pat-cp-current").value;
-      const newPw = document.getElementById("pat-cp-new").value;
-      const r = await apiFetch("/api/auth/change-password", {
-        method: "POST",
-        body: JSON.stringify({ current_password: curPw, new_password: newPw })
-      });
-      if (r.ok) {
-        statusEl.textContent = "Password updated cleanly!";
-        statusEl.className = "text-[11px] font-mono text-emerald-300";
-        this.reset();
-        showToast("Your patient portal password was updated.", "teal");
-      } else {
-        statusEl.textContent = r.data.error || "Password update failed";
-        statusEl.className = "text-[11px] font-mono text-red-300";
-      }
+      const r = await apiFetch("/api/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: document.getElementById("pat-cp-current").value, new_password: document.getElementById("pat-cp-new").value }) });
+      statusEl.textContent = r.ok ? "Password updated cleanly!" : (r.data.error || "Password update failed");
+      statusEl.style.color = r.ok ? "#047857" : "#b91c1c";
+      if (r.ok) { this.reset(); showToast("Your patient portal password was updated."); }
     });
-
     document.getElementById("pat-recovery-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const statusEl = document.getElementById("pat-rec-status");
-      const email = document.getElementById("pat-rec-email").value.trim().toLowerCase();
-      const phone = document.getElementById("pat-rec-phone").value.replace(/[\s-]/g, "");
-      const r = await apiFetch("/api/auth/contact-info", {
-        method: "POST",
-        body: JSON.stringify({ email, phone })
-      });
-      if (r.ok) {
-        statusEl.textContent = "Saved to account";
-        statusEl.className = "text-[11px] font-mono text-emerald-300";
-        showToast("Recovery contact saved!", "teal");
-      } else {
-        statusEl.textContent = r.data.error || "Save failed";
-        statusEl.className = "text-[11px] font-mono text-red-300";
-      }
+      const r = await apiFetch("/api/auth/contact-info", { method: "POST", body: JSON.stringify({ email: document.getElementById("pat-rec-email").value.trim().toLowerCase(), phone: document.getElementById("pat-rec-phone").value.replace(/[\s-]/g, "") }) });
+      statusEl.textContent = r.ok ? "Saved to account" : (r.data.error || "Save failed");
+      statusEl.style.color = r.ok ? "#047857" : "#b91c1c";
+      if (r.ok) showToast("Recovery contact saved!");
     });
-
-    document.getElementById("pat-toggle-forgot-btn").addEventListener("click", () => {
-      document.getElementById("pat-forgot-panel").classList.toggle("hidden");
-    });
-
+    document.getElementById("pat-toggle-forgot-btn").addEventListener("click", () => document.getElementById("pat-forgot-panel").classList.toggle("hidden"));
     document.getElementById("pat-forgot-request-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const uname = document.getElementById("pat-fp-mobile").value.replace(/[\s-]/g, "");
       const contact = document.getElementById("pat-fp-contact").value.trim();
       const statusEl = document.getElementById("pat-fp-status");
       statusEl.classList.remove("hidden");
-      const payload = contact.includes("@")
-        ? { username: uname, email: contact.toLowerCase() }
-        : { username: uname, phone: contact.replace(/[\s-]/g, "") };
-      const res = await apiFetch("/api/auth/forgot-password", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
+      const payload = contact.includes("@") ? { username: uname, email: contact.toLowerCase() } : { username: uname, phone: contact.replace(/[\s-]/g, "") };
+      const res = await apiFetch("/api/auth/forgot-password", { method: "POST", body: JSON.stringify(payload) });
       statusEl.textContent = res.data.message || res.data.error || "Request processed";
     });
-
     document.getElementById("pat-forgot-reset-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const uname = document.getElementById("pat-fp-mobile").value.replace(/[\s-]/g, "");
-      const code = document.getElementById("pat-rp-code").value.trim();
-      const newPw = document.getElementById("pat-rp-pass").value;
-      const res = await apiFetch("/api/auth/reset-password", {
-        method: "POST",
-        body: JSON.stringify({ username: uname, code, new_password: newPw })
-      });
-      if (res.ok) {
-        showToast("Password reset! Sign in with your new password.", "teal");
-        document.getElementById("pat-login-mobile").value = uname;
-        document.getElementById("pat-forgot-panel").classList.add("hidden");
-        this.reset();
-      } else {
-        showToast(res.data.error || "Password reset failed", "red");
-      }
+      const res = await apiFetch("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ username: uname, code: document.getElementById("pat-rp-code").value.trim(), new_password: document.getElementById("pat-rp-pass").value }) });
+      if (res.ok) { showToast("Password reset! Sign in now."); document.getElementById("pat-login-mobile").value = uname; document.getElementById("pat-forgot-panel").classList.add("hidden"); this.reset(); }
+      else showToast(res.data.error || "Password reset failed", "red");
     });
-
     const POLICY_TEXTS = {
-      privacy: {
-        title: "Privacy Notice & DPDP Data Protection Policy (Draft Template)",
-        body: "<p><strong>Minimum Data Collection:</strong> Online booking collects only name, mobile number, preferred date/slot, and department. Do not upload sensitive medical history on public booking forms.</p><p><strong>Your Rights (DPDP Act, 2023):</strong> Registered patients can access, correct, withdraw optional consent, or request erasure via <code>/api/patient/privacy-requests</code>. Inpatient medical records are retained for at least 3 years as required under IMC/NMC regulations.</p>"
-      },
-      terms: {
-        title: "Terms & Conditions (Draft Template)",
-        body: "<p>Online appointment slots reserve an OPD consultation with the selected specialist at Shri R.M. Patil Multi Speciality Hospital, Chakur. Emergency trauma cases receive immediate priority 24x7.</p><p>Patients should present their opaque QR check-in token at Reception 15 minutes before their slot.</p>"
-      },
-      cookies: {
-        title: "Cookie Policy",
-        body: "<p>This application uses strictly necessary, signed <code>HttpOnly; SameSite=Strict</code> session cookies solely for authenticated logins. No third-party advertising or tracking cookies are used.</p>"
-      },
-      refund: {
-        title: "Refund & Cancellation Policy (Draft Template)",
-        body: "<p>Patients may cancel or reschedule bookings before consultation completion through their patient portal, immediately releasing the time slot.</p><p>Verified online payments for eligible cancellations are processed by the Hospital Billing desk with an official <code>RFD-YYYYMMDD-NNN</code> refund reference.</p>"
-      }
+      privacy: { title: "Privacy Notice & DPDP Policy", body: "<p><strong>Minimum Data Collection:</strong> Online booking collects only name, mobile number, preferred date/slot, and department.</p><p><strong>Your Rights (DPDP Act, 2023):</strong> Request access, correction, consent withdrawal, or erasure via <code>/api/patient/privacy-requests</code>.</p>" },
+      terms: { title: "Terms & Conditions", body: "<p>Online slots reserve an OPD consultation with your chosen specialist. Present your opaque QR token 15 minutes early at Reception.</p>" },
+      cookies: { title: "Cookie Policy", body: "<p>Uses strictly necessary, signed <code>HttpOnly; SameSite=Strict</code> session cookies solely for login security.</p>" },
+      refund: { title: "Refund & Cancellation Policy", body: "<p>Cancel or reschedule bookings before consultation completion to immediately release the slot. Verified online payments are refunded via official <code>RFD-...</code> records.</p>" }
     };
     document.querySelectorAll(".policy-link").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -769,39 +492,25 @@
         document.getElementById("policy-modal").classList.remove("hidden");
       });
     });
-    document.getElementById("policy-modal-close").addEventListener("click", () => {
-      document.getElementById("policy-modal").classList.add("hidden");
-    });
-
-    async function detectLiveBackend() {
+    document.getElementById("policy-modal-close").addEventListener("click", () => document.getElementById("policy-modal").classList.add("hidden"));
+    (async function () {
       const pill = document.getElementById("live-db-pill");
-      if (!window.location.protocol.startsWith("http")) return;
       try {
         const r = await fetch("/api/health", { credentials: "same-origin" });
-        if (!r.ok) return;
         const h = await r.json();
-        if (h.status !== "ok") return;
-        state.liveMode = true;
-        if (pill) pill.textContent = "LIVE SQLite DB";
-        if (typeof h.server_time_ist === "string" && /^\d{4}-\d{2}-\d{2}/.test(h.server_time_ist)) {
-          state.serverTodayIst = h.server_time_ist.slice(0, 10);
-        }
-        const me = await apiFetch("/api/auth/me");
-        if (me.ok && me.data.username && me.data.role === "patient") {
-          state.csrfToken = me.data.csrf_token || "";
-          const patRes = await apiFetch("/api/patient/me");
-          if (patRes.ok && patRes.data.patient) {
-            state.patientProfile = patRes.data.patient;
-            await loadPatientDashboard();
+        if (r.ok && h.status === "ok") {
+          state.liveMode = true;
+          pill.textContent = "LIVE SQLite DB";
+          if (typeof h.server_time_ist === "string") state.serverTodayIst = h.server_time_ist.slice(0, 10);
+          const me = await apiFetch("/api/auth/me");
+          if (me.ok && me.data.username && me.data.role === "patient") {
+            state.csrfToken = me.data.csrf_token || "";
+            const pat = await apiFetch("/api/patient/me");
+            if (pat.ok && pat.data.patient) { state.patientProfile = pat.data.patient; await loadPatientDashboard(); }
           }
         }
-      } catch (_) {
-        if (pill) pill.textContent = "Offline Preview";
-      }
-    }
-
-    detectLiveBackend();
+      } catch (_) { pill.textContent = "Offline"; }
+    })();
   </script>
 </body>
-
 </html>

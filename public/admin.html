@@ -4,734 +4,682 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Command Center — Shri R.M. Patil Multi Speciality Hospital</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: #050d1a;
-      color: #e2e8f0;
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
+    body{margin:0;background:#f1f5f9;color:#0f172a;line-height:1.5;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    button,input,select{font-family:inherit}
+    .hidden{display:none!important}
+    .shell{display:flex;min-height:100vh}
+    .sidebar{width:262px;background:#0B1242;color:#cbd5e1;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:50;transform:translateX(-100%);transition:transform .2s ease}
+    .sidebar.open{transform:translateX(0)}
+    .sb-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:45;display:none}
+    .sb-backdrop.open{display:block}
+    .sb-head{padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px}
+    .sb-logo{width:40px;height:40px;border-radius:12px;background:#00768A;color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .sb-title{font-weight:800;color:#fff;font-size:14.5px;line-height:1.2}
+    .sb-sub{font-size:11px;color:#5eead4;font-weight:600;margin-top:2px}
+    .sb-nav{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+    .sb-group{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#64748b;padding:12px 10px 4px}
+    .sb-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 12px;border-radius:12px;border:0;background:transparent;color:#cbd5e1;font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s}
+    .sb-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+    .sb-btn.active{background:#00768A;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(0,118,138,.35)}
+    .sb-foot{padding:14px 12px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:8px}
+    .sb-link{display:block;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.08);color:#e2e8f0;font-size:12.5px;font-weight:600;text-align:center}
+    .sb-link:hover{background:rgba(255,255,255,.15);color:#fff}
+    .sb-logout{padding:9px 12px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(239,68,68,.12);color:#fca5a5;font-size:12.5px;font-weight:700;cursor:pointer}
+    .sb-logout:hover{background:rgba(239,68,68,.25);color:#fff}
+    .main{flex:1;display:flex;flex-direction:column;min-width:0}
+    .topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .tb-left{display:flex;align-items:center;gap:12px;min-width:0}
+    .tb-menu{width:40px;height:40px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .tb-h1{margin:0;font-size:17px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tb-right{display:flex;align-items:center;gap:8px}
+    .cmd-trigger{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;font-size:12.5px;font-weight:600;cursor:pointer}
+    .cmd-trigger kbd{font-size:10.5px;padding:2px 6px;border-radius:5px;background:#fff;border:1px solid #cbd5e1;color:#334155}
+    .btn-refresh{padding:8px 14px;border-radius:10px;border:0;background:#00768A;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer}
+    .btn-refresh:hover{background:#005B6B}
+    .admin-pill{padding:6px 12px;border-radius:999px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;font-size:11.5px;font-weight:800}
+    .content{padding:20px 18px 44px;max-width:1280px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+    .kpi-grid{display:grid;grid-template-columns:1fr;gap:14px}
+    .kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 1px 4px rgba(15,23,42,.04)}
+    .kpi-k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+    .kpi-v{font-size:25px;font-weight:900;color:#0f172a;margin-top:6px}
+    .kpi-v.teal{color:#00768A}.kpi-v.green{color:#047857}.kpi-v.amber{color:#b45309}
+    .kpi-sub{font-size:12px;color:#64748b;margin-top:4px}
+    .panel{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+    .panel-head{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+    .panel-title{margin:0;font-size:16px;font-weight:800;color:#0f172a}
+    .panel-sub{font-size:12px;color:#64748b;margin-top:2px}
+    .panel-body{padding:18px 20px}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .inp,.sel{padding:9px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:13px;background:#fff;color:#0f172a}
+    .inp:focus,.sel:focus{outline:2px solid #00768A;border-color:#00768A}
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+    th{text-align:left;padding:11px 14px;background:#f8fafc;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0}
+    td{padding:12px 14px;border-bottom:1px solid #f1f5f9;color:#1e293b;vertical-align:middle}
+    tr:hover td{background:#f8fafc}
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase}
+    .b-green{background:#dcfce7;color:#166534}.b-amber{background:#fef3c7;color:#92400e}.b-blue{background:#dbeafe;color:#1e40af}.b-red{background:#fee2e2;color:#991b1b}.b-teal{background:#ccfbf1;color:#115e59}
+    .empty{padding:28px;text-align:center;color:#64748b;font-size:13.5px}
+    .btn-gold{background:#F4B400;color:#0f172a;border:0;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;cursor:pointer}
+    .btn-gold:hover{background:#e0a400}
+    .btn-out{padding:7px 11px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:11.5px;font-weight:700;cursor:pointer}
+    .btn-red{padding:7px 11px;border-radius:8px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;font-size:11.5px;font-weight:700;cursor:pointer}
+    .btn-ok{padding:7px 11px;border-radius:8px;border:1px solid #a7f3d0;background:#ecfdf5;color:#047857;font-size:11.5px;font-weight:700;cursor:pointer}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;margin-bottom:16px}
+    .fld label{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#475569;margin-bottom:4px}
+    .cmd-bg{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.6);display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px}
+    .cmd-box{background:#fff;border-radius:16px;max-width:500px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;border:1px solid #e2e8f0}
+    .cmd-inp{width:100%;padding:14px 16px;border:0;border-bottom:1px solid #e2e8f0;font-size:14.5px;outline:none}
+    .cmd-list{max-height:280px;overflow-y:auto;padding:8px}
+    .cmd-item{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-radius:10px;background:transparent;font-size:13.5px;font-weight:600;color:#1e293b;cursor:pointer}
+    .cmd-item:hover{background:#f0fdfa;color:#00768A}
+    #toast-box{position:fixed;bottom:18px;right:18px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:360px}
+    .toast{border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#fff;background:#00768A;box-shadow:0 10px 25px rgba(0,0,0,.2)}
+    .toast.red{background:#dc2626}
+    @media(min-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(min-width:1024px){
+      .sidebar{transform:translateX(0);position:sticky;top:0;height:100vh}
+      .tb-menu,.sb-backdrop{display:none!important}
+      .kpi-grid{grid-template-columns:repeat(4,1fr)}
+      .content{padding:24px 28px 48px}
     }
-    .font-serif-display {
-      font-family: 'Playfair Display', Georgia, serif;
-    }
-    .gold-btn {
-      background: linear-gradient(135deg, #d8b54c 0%, #c69d2f 100%);
-      color: #071324;
-    }
-    .gold-btn:hover { filter: brightness(1.06); }
   </style>
 </head>
-<body class="min-h-screen antialiased selection:bg-amber-500/30">
-  <div id="toast-box" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
-
-  <!-- Top Admin Security Bar -->
-  <header class="sticky top-0 z-40 bg-[#071324]/95 backdrop-blur border-b border-amber-500/25">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-lg">🛡️</div>
+<body>
+  <div id="toast-box" role="status" aria-live="polite"></div>
+  <div id="sb-backdrop" class="sb-backdrop"></div>
+  <div class="shell">
+    <aside id="sidebar" class="sidebar" aria-label="Admin Navigation">
+      <div class="sb-head">
+        <div class="sb-logo">+</div>
         <div>
-          <div class="font-serif-display text-white font-bold text-base sm:text-lg leading-tight">Admin Command Center</div>
-          <div class="text-[10px] tracking-[0.18em] text-[#d8b54c] uppercase font-semibold">Shri R.M. Patil Hospital · Restricted Route (/admin)</div>
+          <div class="sb-title">Shri R.M. Patil Hospital</div>
+          <div class="sb-sub">Admin Command Center</div>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <span id="header-auth-pill" class="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/40 text-red-300 text-[11px] font-bold">LOCKED · ADMIN ONLY</span>
-        <button id="admin-logout-btn" type="button" class="hidden px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/60 border border-slate-700 text-xs font-semibold text-slate-200 transition">Sign Out</button>
-      </div>
-    </div>
-  </header>
+      <nav class="sb-nav">
+        <div class="sb-group">Hospital Oversight</div>
+        <button type="button" class="sb-btn active" data-sec="overview"><span>Overview &amp; KPIs</span></button>
+        <button type="button" class="sb-btn" data-sec="staff"><span>Staff Logins &amp; Passwords</span></button>
+        <button type="button" class="sb-btn" data-sec="appointments"><span>Appointments Queue</span></button>
+        <button type="button" class="sb-btn" data-sec="holidays"><span>Doctor Holidays</span></button>
 
-  <!-- ==================== LOCKED ADMIN-ONLY GATE ==================== -->
-  <main id="admin-gate" class="max-w-xl mx-auto px-4 py-14 sm:py-20">
-    <div class="bg-[#0d1c31] border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-2xl">🔐</div>
-        <div>
-          <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#d8b54c]">Restricted Hospital Route</div>
-          <h1 class="font-serif-display text-2xl font-bold text-white">Administrator Sign-In</h1>
+        <div class="sb-group">Separate Modules</div>
+        <button type="button" class="sb-btn" data-sec="pharmacy"><span>Shiv Medical Stores</span></button>
+        <button type="button" class="sb-btn" data-sec="lab"><span>Lab Test Catalog</span></button>
+
+        <div class="sb-group">Security &amp; Account</div>
+        <button type="button" class="sb-btn" data-sec="audit"><span>Security Audit Logs</span></button>
+        <button type="button" class="sb-btn" data-sec="security"><span>My Admin Password</span></button>
+      </nav>
+
+      <div class="sb-foot">
+        <a href="/staff" class="sb-link">Open Staff &amp; Doctor Portal</a>
+        <a href="/" class="sb-link">View Public Homepage</a>
+        <button type="button" id="admin-logout-btn" class="sb-logout">Sign Out Securely</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="tb-left">
+          <button type="button" id="tb-menu-btn" class="tb-menu" aria-label="Toggle Sidebar">&#9776;</button>
+          <h1 class="tb-h1" id="page-title">Admin Command Center</h1>
         </div>
-      </div>
-
-      <p class="text-xs text-slate-400 leading-relaxed">
-        This page (<code class="text-amber-300">/admin</code>) is strictly isolated for <strong>Hospital Administrators</strong>. On the Python backend, unauthenticated requests return <strong>HTTP 401</strong> and non-admin staff (doctors, receptionists, pharmacists, lab techs, patients) are blocked with <strong>HTTP 403 Forbidden</strong>.
-      </p>
-
-      <form id="admin-login-form" class="space-y-4">
-        <div>
-          <label for="admin-user" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Admin Username</label>
-          <input id="admin-user" type="text" required placeholder="admin" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400" />
+        <div class="tb-right">
+          <button type="button" id="open-cmd-btn" class="cmd-trigger"><span>Quick Jump</span><kbd>Ctrl+K</kbd></button>
+          <button type="button" id="refresh-all-btn" class="btn-refresh">Refresh</button>
+          <span id="admin-user-pill" class="admin-pill">ADMIN</span>
         </div>
-        <div>
-          <label for="admin-pass" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Admin Password</label>
-          <input id="admin-pass" type="password" required placeholder="••••••••••••" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400" />
-        </div>
-        <div id="gate-error" class="hidden rounded-lg bg-red-500/15 border border-red-500/40 px-3.5 py-2.5 text-xs text-red-200"></div>
-        <button type="submit" class="w-full gold-btn py-3 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg transition">
-          Unlock Admin Command Center
-        </button>
-      </form>
+      </header>
 
-      <div id="admin-demo-box" class="border-t border-slate-800 pt-4 space-y-2.5">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Test Access Control (Interactive Demo)</div>
-        <div class="grid sm:grid-cols-2 gap-2.5">
-          <button id="demo-admin-unlock" type="button" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 text-left transition">
-            <div class="text-xs font-bold text-[#e4c66a]">Sign in as Admin (200 OK)</div>
-            <div class="text-[11px] text-slate-300 mt-0.5">Unlocks full hospital dashboard</div>
-          </button>
-          <button id="demo-nonadmin-test" type="button" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-left transition">
-            <div class="text-xs font-bold text-red-300">Try Doctor / Staff Login (403)</div>
-            <div class="text-[11px] text-slate-300 mt-0.5">Verifies non-admins are blocked</div>
-          </button>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- ==================== UNLOCKED ADMIN DASHBOARD ==================== -->
-  <section id="admin-workspace" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-    <!-- Top Section Nav -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="font-serif-display text-2xl sm:text-3xl font-bold text-white">Hospital Operations &amp; Security Overview</h2>
-        <p class="text-xs text-slate-400 mt-0.5">Timezone: <span class="text-teal-300 font-mono">Asia/Kolkata (IST)</span> · Session: <span id="admin-csrf-display" class="text-emerald-300 font-mono"></span></p>
-      </div>
-      <div class="flex flex-wrap gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
-        <button data-tab="overview" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950">Overview &amp; Revenue</button>
-        <button data-tab="staff" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">Staff Logins &amp; Passwords</button>
-        <button data-tab="audit" class="admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">Security Audit Logs</button>
-      </div>
-    </div>
-
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
-        <div class="text-[10px] uppercase tracking-wider text-slate-400">Total Appointments</div>
-        <div id="kpi-total-appts" class="text-2xl font-bold text-white mt-1">7</div>
-        <div id="kpi-today-appts" class="text-[11px] text-teal-400 mt-0.5">4 scheduled today</div>
-      </div>
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
-        <div class="text-[10px] uppercase tracking-wider text-slate-400">Collected Revenue</div>
-        <div id="kpi-paid-rev" class="text-2xl font-bold text-emerald-400 mt-1">₹2,100</div>
-        <div class="text-[11px] text-slate-400 mt-0.5">Verified PAID receipts</div>
-      </div>
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
-        <div class="text-[10px] uppercase tracking-wider text-slate-400">Pending Collection</div>
-        <div id="kpi-pending-rev" class="text-2xl font-bold text-amber-300 mt-1">₹900</div>
-        <div class="text-[11px] text-slate-400 mt-0.5">Pay at Hospital</div>
-      </div>
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
-        <div class="text-[10px] uppercase tracking-wider text-slate-400">Low-Stock Alerts</div>
-        <div id="kpi-low-stock" class="text-2xl font-bold text-red-400 mt-1">1</div>
-        <div class="text-[11px] text-slate-400 mt-0.5">Shiv Medical Stores</div>
-      </div>
-      <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
-        <div class="text-[10px] uppercase tracking-wider text-slate-400">Security Audit</div>
-        <div class="text-2xl font-bold text-emerald-400 mt-1">58 / 58</div>
-        <div class="text-[11px] text-teal-300 mt-0.5">0 critical leaks</div>
-      </div>
-    </div>
-
-    <!-- TAB 1: OVERVIEW & REVENUE -->
-    <div id="panel-overview" class="admin-panel grid lg:grid-cols-12 gap-6">
-      <div class="lg:col-span-7 bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h3 class="font-serif-display text-lg font-bold text-white">Department Appointment &amp; Revenue Breakdown</h3>
-        <div class="relative h-64 w-full">
-          <canvas id="admin-revenue-chart"></canvas>
-        </div>
-        <div class="border-t border-slate-800 pt-4">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Live Server Observability (<code class="text-teal-300">/api/admin/metrics</code>)</div>
-          <div id="admin-metrics-row" class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-[11px]">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">Reqs</div><div id="m-total" class="font-bold text-white">—</div></div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">2xx</div><div id="m-2xx" class="font-bold text-emerald-400">—</div></div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">4xx</div><div id="m-4xx" class="font-bold text-amber-300">—</div></div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">429</div><div id="m-429" class="font-bold text-amber-400">—</div></div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">5xx</div><div id="m-5xx" class="font-bold text-red-400">—</div></div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">Jobs</div><div id="m-jobs" class="font-bold text-teal-300">—</div></div>
+      <main class="content">
+        <!-- SECTION 1: OVERVIEW -->
+        <section id="sec-overview" class="sec-view">
+          <div class="kpi-grid">
+            <div class="kpi"><div class="kpi-k">Today's Appointments</div><div class="kpi-v teal" id="kpi-today">0</div><div class="kpi-sub" id="kpi-date">IST Today</div></div>
+            <div class="kpi"><div class="kpi-k">Total Appointments</div><div class="kpi-v" id="kpi-total">0</div><div class="kpi-sub" id="kpi-patients">0 registered patients</div></div>
+            <div class="kpi"><div class="kpi-k">Hospital Paid Revenue</div><div class="kpi-v green" id="kpi-paid">&#8377;0</div><div class="kpi-sub" id="kpi-pending">Pending: &#8377;0</div></div>
+            <div class="kpi"><div class="kpi-k">Security Audit Suite</div><div class="kpi-v green">58 / 58 PASS</div><div class="kpi-sub" id="kpi-lowstock-sub">0 low-stock alerts</div></div>
           </div>
-        </div>
-      </div>
 
-      <div class="lg:col-span-5 bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h3 class="font-serif-display text-lg font-bold text-white">Quick Admin Controls</h3>
-        <form id="admin-holiday-form" class="space-y-3 bg-slate-900/70 p-4 rounded-xl border border-slate-800">
-          <div class="text-xs font-bold text-[#d8b54c]">Schedule Doctor Leave / Holiday</div>
-          <select id="hol-doc" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white">
-            <option value="dr_rohan">Dr. Rohan Patil (Orthopaedics)</option>
-            <option value="dr_rahul">Dr. Rahul Patil (Obgy)</option>
-            <option value="dr_manjusha">Dr. Manjusha Patil (Dental)</option>
-            <option value="dr_snehal">Dr. Snehal Patil (General Medicine)</option>
-          </select>
-          <div class="grid grid-cols-2 gap-2">
-            <input id="hol-date" type="date" value="2026-11-29" required class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-            <input id="hol-reason" type="text" placeholder="Reason (e.g. Conference)" required class="rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
+          <div class="panel" style="margin-top:20px">
+            <div class="panel-head">
+              <div><h2 class="panel-title">Live Server Observability &amp; Queue Health</h2><div class="panel-sub">Real-time request counters, error rate, and background job queue</div></div>
+              <span class="badge b-teal" id="metrics-status">HEALTHY</span>
+            </div>
+            <div class="panel-body">
+              <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-k">Total Requests</div><div class="kpi-v" id="m-reqs">0</div></div>
+                <div class="kpi"><div class="kpi-k">Server 5xx Errors</div><div class="kpi-v green" id="m-5xx">0</div></div>
+                <div class="kpi"><div class="kpi-k">Registered Doctors</div><div class="kpi-v teal" id="m-docs">4</div></div>
+                <div class="kpi"><div class="kpi-k">Background Jobs</div><div class="kpi-v" id="m-jobs">0</div></div>
+              </div>
+            </div>
           </div>
-          <button type="submit" class="w-full gold-btn py-2 rounded-lg text-xs font-bold">Block Date on Schedule</button>
-        </form>
+        </section>
 
-        <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-800 space-y-2">
-          <div class="text-xs font-bold text-white">Scheduled Holidays</div>
-          <div id="admin-holidays-list" class="space-y-1.5 text-xs text-slate-300"></div>
-        </div>
-      </div>
+        <!-- SECTION 2: STAFF LOGINS & INDIVIDUAL PASSWORDS -->
+        <section id="sec-staff" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">Individual Staff Logins, Roles &amp; Passwords</h2>
+                <div class="panel-sub">Create separate login accounts for doctors, nurses, receptionists, billing clerks, pharmacists, and lab technicians, assign individual passwords, or disable inactive logins.</div>
+              </div>
+              <span class="badge b-teal">salted scrypt</span>
+            </div>
+            <div class="panel-body">
+              <form id="admin-create-user-form" class="form-grid">
+                <div class="fld"><label for="admin-new-username">Username</label><input id="admin-new-username" type="text" required pattern="[a-z0-9_]{3,30}" placeholder="e.g. nurse_ward2" class="inp" style="width:100%" /></div>
+                <div class="fld"><label for="admin-new-fullname">Full Name</label><input id="admin-new-fullname" type="text" required maxlength="80" placeholder="Sunita Shinde" class="inp" style="width:100%" /></div>
+                <div class="fld">
+                  <label for="admin-new-role">Role</label>
+                  <select id="admin-new-role" class="sel" style="width:100%">
+                    <option value="doctor">doctor</option>
+                    <option value="receptionist">receptionist</option>
+                    <option value="nurse">nurse</option>
+                    <option value="pharmacist">pharmacist</option>
+                    <option value="lab_tech">lab_tech</option>
+                    <option value="billing">billing</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+                <div class="fld"><label for="admin-new-dept">Department</label><input id="admin-new-dept" type="text" maxlength="80" placeholder="Surgical Ward" class="inp" style="width:100%" /></div>
+                <div class="fld"><label for="admin-new-password">Password (8+)</label><input id="admin-new-password" type="password" required minlength="8" placeholder="Letter + digit" class="inp" style="width:100%" /></div>
+                <div><button type="submit" class="btn-gold" style="width:100%">+ Create Staff Account</button></div>
+              </form>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Username</th><th>Full Name</th><th>Role</th><th>Department</th><th>Status &amp; Recovery</th><th>Assign Password &amp; Active Toggle</th></tr>
+                </thead>
+                <tbody id="admin-staff-tbody"><tr><td colspan="6" class="empty">Loading staff accounts...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: APPOINTMENTS QUEUE -->
+        <section id="sec-appointments" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2 class="panel-title">Hospital Appointments Queue</h2><div class="panel-sub">Searchable across all 4 specialist departments</div></div>
+              <div class="filters">
+                <input type="search" id="appt-search" class="inp" placeholder="Search name, APT no, doctor..." />
+                <select id="appt-status-filter" class="sel">
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Appointment No</th><th>Patient</th><th>Doctor / Department</th><th>Date &amp; Slot</th><th>Status</th></tr></thead>
+                <tbody id="appt-tbody"><tr><td colspan="5" class="empty">Loading appointments...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: DOCTOR HOLIDAYS -->
+        <section id="sec-holidays" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2 class="panel-title">Doctor OPD Leave &amp; Holiday Manager</h2><div class="panel-sub">Blocked dates automatically close public OPD booking slots for that specialist</div></div>
+            </div>
+            <div class="panel-body">
+              <form id="admin-holiday-form" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                <select id="hol-doc" class="sel">
+                  <option value="dr_rohan">Dr. Rohan Patil</option>
+                  <option value="dr_rahul">Dr. Rahul Patil</option>
+                  <option value="dr_manjusha">Dr. Manjusha Patil</option>
+                  <option value="dr_snehal">Dr. Snehal Patil</option>
+                </select>
+                <input id="hol-date" type="date" required class="inp" />
+                <input id="hol-reason" type="text" required maxlength="120" placeholder="Reason (e.g. Conference / Leave)" class="inp" style="flex:1;min-width:180px" />
+                <button type="submit" class="btn-gold">Block Date</button>
+              </form>
+              <div id="admin-holidays-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 5: SHIV MEDICAL STORES -->
+        <section id="sec-pharmacy" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2 class="panel-title">Shiv Medical Stores &mdash; Separate Pharmacy Financial Report</h2><div class="panel-sub">Strictly isolated from Hospital OPD/IPD billing (PHM- &amp; PUR- ledgers)</div></div>
+              <span class="badge b-green">ISOLATED LEDGER</span>
+            </div>
+            <div class="panel-body">
+              <div class="kpi-grid">
+                <div class="kpi"><div class="kpi-k">Total Store Sales</div><div class="kpi-v green" id="ph-sales">&#8377;0</div><div class="kpi-sub" id="ph-bills">0 pharmacy bills</div></div>
+                <div class="kpi"><div class="kpi-k">Supplier Purchases</div><div class="kpi-v" id="ph-purchases">&#8377;0</div><div class="kpi-sub">Batch stock procurement</div></div>
+                <div class="kpi"><div class="kpi-k">Recorded Net Margin</div><div class="kpi-v teal" id="ph-margin">&#8377;0</div><div class="kpi-sub">Sales minus purchases</div></div>
+                <div class="kpi"><div class="kpi-k">Low-Stock Alerts</div><div class="kpi-v amber" id="ph-low">0</div><div class="kpi-sub">Items at or below reorder</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 6: LABORATORY CATALOG -->
+        <section id="sec-lab" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">Dynamic Laboratory Test Catalog</h2><div class="panel-sub">Admin &amp; Lab Technicians can add new diagnostic tests anytime</div></div></div>
+            <div class="panel-body">
+              <form id="add-lab-form" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                <input type="text" id="lab-code" class="inp" placeholder="Code (e.g. CAT-HBA1C)" required />
+                <input type="text" id="lab-name" class="inp" placeholder="Test Name" required style="flex:1;min-width:180px" />
+                <input type="text" id="lab-cat" class="inp" placeholder="Category" value="Pathology" />
+                <input type="number" id="lab-price" class="inp" placeholder="Price INR" min="50" max="50000" required style="width:120px" />
+                <button type="submit" class="btn-gold">+ Add Lab Test</button>
+              </form>
+              <div id="lab-msg" class="hidden" style="margin-bottom:12px;font-size:13px;font-weight:700"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Code</th><th>Test Name</th><th>Category</th><th>Default Fee</th></tr></thead>
+                  <tbody id="lab-tbody"><tr><td colspan="4" class="empty">Loading catalog...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 7: SECURITY AUDIT LOGS -->
+        <section id="sec-audit" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2 class="panel-title">Tamper-Evident Security Audit Trail</h2><div class="panel-sub">Latest 50 authenticated, authorization, and public booking events</div></div>
+              <select id="audit-filter" class="sel">
+                <option value="all">All Events</option>
+                <option value="blocked">Blocked Attempts (401/403)</option>
+                <option value="ok">Authorized Events (200/201)</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Client IP</th><th>HTTP</th></tr></thead>
+                <tbody id="audit-tbody"><tr><td colspan="5" class="empty">Loading audit logs...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 8: MY ADMIN PASSWORD & RECOVERY -->
+        <section id="sec-security" class="sec-view hidden">
+          <div class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">Change Admin Login Password</h2><div class="panel-sub">Rotate your own primary Admin password anytime</div></div></div>
+            <div class="panel-body">
+              <form id="admin-change-pw-form" class="form-grid" style="max-width:680px">
+                <div class="fld"><label for="adm-cp-cur">Current Password</label><input id="adm-cp-cur" type="password" required class="inp" style="width:100%" /></div>
+                <div class="fld"><label for="adm-cp-new">New Password (8+)</label><input id="adm-cp-new" type="password" required minlength="8" class="inp" style="width:100%" /></div>
+                <div class="fld"><label for="adm-cp-cnf">Confirm New Password</label><input id="adm-cp-cnf" type="password" required minlength="8" class="inp" style="width:100%" /></div>
+                <div><button type="submit" class="btn-gold">Update Password</button></div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
+  </div>
 
-    <!-- TAB 2: INDIVIDUAL STAFF ACCOUNTS & PASSWORDS -->
-    <div id="panel-staff" class="admin-panel hidden bg-[#0d1c31] border border-slate-800 rounded-2xl overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 class="font-serif-display text-lg font-bold text-white">Individual Staff Logins, Roles &amp; Password Assignment</h3>
-          <p class="text-xs text-slate-400">Create separate login accounts for doctors, nurses, receptionists, pharmacists, lab techs &amp; billing staff, assign or reset individual passwords, and disable inactive accounts.</p>
-        </div>
-        <span class="text-[11px] font-mono text-teal-300">Password Hashing: salted scrypt</span>
-      </div>
-
-      <form id="admin-create-user-form" class="px-6 py-4 bg-slate-900/60 border-b border-slate-800 grid sm:grid-cols-12 gap-2.5 items-end">
-        <div class="sm:col-span-2">
-          <label for="admin-new-username" class="block text-[10px] uppercase text-slate-400 mb-1">Username</label>
-          <input id="admin-new-username" type="text" required pattern="[a-z0-9_]{3,30}" placeholder="nurse_ward2"
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs font-mono text-white" />
-        </div>
-        <div class="sm:col-span-3">
-          <label for="admin-new-fullname" class="block text-[10px] uppercase text-slate-400 mb-1">Full Name</label>
-          <input id="admin-new-fullname" type="text" required maxlength="80" placeholder="Sunita Shinde (Ward 2)"
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-        </div>
-        <div class="sm:col-span-2">
-          <label for="admin-new-role" class="block text-[10px] uppercase text-slate-400 mb-1">Role</label>
-          <select id="admin-new-role" class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-2.5 py-2 text-xs text-white">
-            <option value="doctor">doctor</option>
-            <option value="receptionist">receptionist</option>
-            <option value="nurse">nurse</option>
-            <option value="pharmacist">pharmacist</option>
-            <option value="lab_tech">lab_tech</option>
-            <option value="billing">billing</option>
-            <option value="admin">admin</option>
-          </select>
-        </div>
-        <div class="sm:col-span-2">
-          <label for="admin-new-dept" class="block text-[10px] uppercase text-slate-400 mb-1">Department</label>
-          <input id="admin-new-dept" type="text" maxlength="80" placeholder="Surgical Ward"
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-        </div>
-        <div class="sm:col-span-2">
-          <label for="admin-new-password" class="block text-[10px] uppercase text-slate-400 mb-1">Password (8+)</label>
-          <input id="admin-new-password" type="password" required minlength="8" placeholder="Letter + digit"
-            class="w-full rounded-lg bg-[#16263d] border border-slate-700 px-3 py-2 text-xs text-white" />
-        </div>
-        <div class="sm:col-span-1">
-          <button type="submit" class="w-full gold-btn py-2 rounded-lg text-xs font-bold">Add</button>
-        </div>
-      </form>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider">
-            <tr>
-              <th class="px-5 py-3">Username</th>
-              <th class="px-5 py-3">Name</th>
-              <th class="px-5 py-3">Role</th>
-              <th class="px-5 py-3">Department</th>
-              <th class="px-5 py-3">Status &amp; Recovery</th>
-              <th class="px-5 py-3">Set Password &amp; Account Toggle</th>
-            </tr>
-          </thead>
-          <tbody id="admin-staff-tbody" class="divide-y divide-slate-800 text-slate-200"></tbody>
-        </table>
-      </div>
+  <!-- Admin Command Palette (Ctrl+K) -->
+  <div id="cmd-modal" class="hidden cmd-bg">
+    <div class="cmd-box">
+      <input type="text" id="cmd-input" class="cmd-inp" placeholder="Jump to Admin section or action (Esc to close)..." />
+      <div id="cmd-list" class="cmd-list"></div>
     </div>
-
-    <!-- TAB 3: SECURITY AUDIT LOGS -->
-    <div id="panel-audit" class="admin-panel hidden bg-[#0d1c31] border border-slate-800 rounded-2xl p-6 space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 class="font-serif-display text-lg font-bold text-white">Live Security Audit Trail (<code class="text-xs font-mono text-amber-300">/api/admin/audit</code>)</h3>
-          <p class="text-xs text-slate-400">Tracks every login, blocked unauthorized access attempt, payment verification, and clinical action.</p>
-        </div>
-        <select id="audit-filter" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-white">
-          <option value="all">All Events</option>
-          <option value="blocked">Blocked Attempts (401/403)</option>
-          <option value="ok">Authorized Events (200/201)</option>
-        </select>
-      </div>
-      <div id="admin-audit-list" class="space-y-2 font-mono text-[11px] max-h-96 overflow-y-auto"></div>
-    </div>
-  </section>
+  </div>
 
   <script>
-    const STAFF_MATRIX = [
-      { user: "admin", name: "Hospital Administrator", role: "admin", dept: "Administration", fee: "—", adminAccess: "ALLOWED (200)" },
-      { user: "dr_rohan", name: "Dr. Rohan Patil", role: "doctor", dept: "Orthopaedics · 2008/10/3539", fee: "₹500", adminAccess: "BLOCKED (403)" },
-      { user: "dr_rahul", name: "Dr. Rahul Patil", role: "doctor", dept: "Obgy · 2022/12/9582", fee: "₹500", adminAccess: "BLOCKED (403)" },
-      { user: "dr_manjusha", name: "Dr. Manjusha Patil", role: "doctor", dept: "Dental Surgery · A-29811", fee: "₹400", adminAccess: "BLOCKED (403)" },
-      { user: "dr_snehal", name: "Dr. Snehal Patil", role: "doctor", dept: "General Medicine · A-2018/03/0645", fee: "₹300", adminAccess: "BLOCKED (403)" },
-      { user: "reception", name: "Front Desk Reception", role: "receptionist", dept: "Front Desk & QR Check-In", fee: "—", adminAccess: "BLOCKED (403)" },
-      { user: "nurse", name: "Ward Nurse", role: "nurse", dept: "Nursing & Trauma Ward", fee: "—", adminAccess: "BLOCKED (403)" },
-      { user: "pharmacist", name: "Shiv Medical Pharmacist", role: "pharmacist", dept: "Shiv Medical Stores", fee: "—", adminAccess: "BLOCKED (403)" },
-      { user: "lab_tech", name: "Pathology Lab Tech", role: "lab_tech", dept: "Laboratory & Diagnostics", fee: "—", adminAccess: "BLOCKED (403)" },
-      { user: "billing_desk", name: "Hospital Billing Officer", role: "billing", dept: "Billing, Invoices & Refunds", fee: "—", adminAccess: "BLOCKED (403)" }
-    ];
+    (function () {
+      'use strict';
+      var csrfToken = '';
+      var allAppointments = [];
+      var allStaffUsers = [];
+      var allAuditLogs = [];
 
-    const state = {
-      liveMode: false,
-      unlocked: false,
-      csrf: "",
-      staffUsers: [],
-      holidays: [
-        { doc: "Dr. Rohan Patil", date: "2026-12-05", reason: "Orthopaedic CME Workshop" }
-      ],
-      logs: [
-        { time: "23:41:05", actor: "system", action: "SECURITY_AUDIT_PASS (34/34)", status: 200 },
-        { time: "23:41:12", actor: "dr_rohan", action: "UNAUTHORIZED_ADMIN_PAGE_ACCESS (/admin)", status: 403 },
-        { time: "23:41:18", actor: "reception", action: "PAYMENT_COLLECTED:RCP-20261126-001", status: 200 },
-        { time: "23:41:25", actor: "public", action: "PAYMENT_VERIFIED:RCP-20261126-002", status: 200 },
-        { time: "23:42:01", actor: "9812345678", action: "BLOCKED_CROSS_PATIENT_READ:1", status: 403 }
-      ]
-    };
-
-    function escHtml(str) {
-      return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#x27;");
-    }
-
-    function toast(msg, tone = "gold") {
-      const box = document.getElementById("toast-box");
-      const cls = tone === "red"
-        ? "bg-red-950/95 border-red-500/50 text-red-100"
-        : "bg-slate-900/95 border-amber-500/50 text-amber-100";
-      const el = document.createElement("div");
-      el.className = `pointer-events-auto rounded-xl border px-4 py-3 text-xs font-medium shadow-xl ${cls}`;
-      el.textContent = msg;
-      box.appendChild(el);
-      setTimeout(() => el.remove(), 3600);
-    }
-
-    function addLog(actor, action, status) {
-      state.logs.unshift({ time: new Date().toTimeString().slice(0, 8), actor, action, status });
-      renderAudit();
-    }
-
-    function unlockAdmin(isLiveBoot = false) {
-      state.unlocked = true;
-      if (!isLiveBoot && !state.csrf) {
-        state.csrf = "csrf_adm_" + Math.random().toString(36).slice(2, 12);
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
-      document.getElementById("admin-gate").classList.add("hidden");
-      document.getElementById("admin-workspace").classList.remove("hidden");
-      document.getElementById("admin-logout-btn").classList.remove("hidden");
-      const pill = document.getElementById("header-auth-pill");
-      pill.textContent = "AUTHORIZED · ADMIN";
-      pill.className = "px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold";
-      document.getElementById("admin-csrf-display").textContent = state.csrf;
-      if (!isLiveBoot) addLog("admin", "ADMIN_PAGE_LOGIN_SUCCESS (/admin)", 200);
-      renderStaff();
-      renderHolidays();
-      renderAudit();
-      initRevenueChart();
-      toast("Admin Command Center unlocked (HTTP 200 OK)");
-    }
-
-    async function lockAdmin() {
-      if (state.liveMode) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-          body: "{}",
-          credentials: "same-origin"
-        }).catch(() => {});
+      function toast(msg, tone) {
+        var box = document.getElementById('toast-box');
+        var el = document.createElement('div');
+        el.className = 'toast' + (tone === 'red' ? ' red' : '');
+        el.textContent = msg;
+        box.appendChild(el);
+        setTimeout(function () { el.remove(); }, 3500);
       }
-      state.unlocked = false;
-      state.csrf = "";
-      document.getElementById("admin-gate").classList.remove("hidden");
-      document.getElementById("admin-workspace").classList.add("hidden");
-      document.getElementById("admin-logout-btn").classList.add("hidden");
-      const pill = document.getElementById("header-auth-pill");
-      pill.textContent = "LOCKED · ADMIN ONLY";
-      pill.className = "px-3 py-1 rounded-full bg-red-500/15 border border-red-500/40 text-red-300 text-[11px] font-bold";
-      toast("Signed out — /admin route locked.");
-    }
 
-    document.getElementById("admin-login-form").addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const u = document.getElementById("admin-user").value.trim().toLowerCase();
-      const p = document.getElementById("admin-pass").value;
-      const err = document.getElementById("gate-error");
-      err.classList.add("hidden");
-      if (window.location.protocol.startsWith("http")) {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: u, password: p }),
-          credentials: "same-origin"
+      var sidebar = document.getElementById('sidebar');
+      var backdrop = document.getElementById('sb-backdrop');
+      function toggleSidebar(forceClose) {
+        var open = forceClose ? false : !sidebar.classList.contains('open');
+        sidebar.classList.toggle('open', open);
+        backdrop.classList.toggle('open', open);
+      }
+      document.getElementById('tb-menu-btn').addEventListener('click', function () { toggleSidebar(false); });
+      backdrop.addEventListener('click', function () { toggleSidebar(true); });
+
+      var secTitles = {
+        overview: 'Admin Command Center',
+        staff: 'Individual Staff Logins & Passwords',
+        appointments: 'Appointments Queue',
+        holidays: 'Doctor Leave & Holidays',
+        pharmacy: 'Shiv Medical Stores — Pharmacy Finance',
+        lab: 'Laboratory Test Catalog',
+        audit: 'Security Audit Logs',
+        security: 'My Admin Password'
+      };
+      function showSection(name) {
+        document.querySelectorAll('.sec-view').forEach(function (el) { el.classList.add('hidden'); });
+        var target = document.getElementById('sec-' + name);
+        if (target) target.classList.remove('hidden');
+        document.querySelectorAll('.sb-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-sec') === name); });
+        document.getElementById('page-title').textContent = secTitles[name] || 'Admin Command Center';
+        toggleSidebar(true);
+      }
+      document.querySelectorAll('.sb-btn').forEach(function (b) { b.addEventListener('click', function () { showSection(b.getAttribute('data-sec')); }); });
+
+      var cmdModal = document.getElementById('cmd-modal');
+      var cmdInput = document.getElementById('cmd-input');
+      var cmdList = document.getElementById('cmd-list');
+      var commands = [
+        { label: 'Overview & KPIs', run: function () { showSection('overview'); } },
+        { label: 'Staff Logins & Passwords', run: function () { showSection('staff'); } },
+        { label: 'Appointments Queue', run: function () { showSection('appointments'); } },
+        { label: 'Doctor Holidays', run: function () { showSection('holidays'); } },
+        { label: 'Shiv Medical Stores (Separate Finance)', run: function () { showSection('pharmacy'); } },
+        { label: 'Laboratory Test Catalog', run: function () { showSection('lab'); } },
+        { label: 'Security Audit Logs', run: function () { showSection('audit'); } },
+        { label: 'My Admin Password', run: function () { showSection('security'); } },
+        { label: 'Refresh All Live Data', run: function () { loadAll(); } },
+        { label: 'Open Staff & Doctor Portal (/staff)', run: function () { location.href = '/staff'; } }
+      ];
+      function renderCmds(q) {
+        var term = (q || '').trim().toLowerCase();
+        var filtered = commands.filter(function (c) { return !term || c.label.toLowerCase().indexOf(term) !== -1; });
+        cmdList.innerHTML = '';
+        filtered.forEach(function (c) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'cmd-item'; b.textContent = c.label;
+          b.onclick = function () { cmdModal.classList.add('hidden'); c.run(); };
+          cmdList.appendChild(b);
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          err.textContent = `HTTP ${res.status}: ${data.error || "Login failed"}`;
-          err.classList.remove("hidden");
-          toast("Authentication failed", "red");
-          return;
-        }
-        if (data.user && data.user.role !== "admin") {
-          await fetch("/api/auth/logout", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRF-Token": data.csrf_token || "" },
-            body: "{}",
-            credentials: "same-origin"
-          }).catch(() => {});
-          err.textContent = "HTTP 403 Forbidden: Only Hospital Administrators can access /admin.";
-          err.classList.remove("hidden");
-          toast("Blocked non-admin access (HTTP 403)", "red");
-          return;
-        }
-        this.reset();
-        await initLiveAdmin();
-        return;
       }
-      if (u !== "admin" || !p) {
-        addLog(u || "unknown", "UNAUTHORIZED_ADMIN_PAGE_ACCESS (/admin)", 403);
-        err.textContent = "HTTP 403 Forbidden: Only Hospital Administrators can access /admin. This attempt has been logged.";
-        err.classList.remove("hidden");
-        toast("Blocked non-admin access (HTTP 403)", "red");
-        return;
-      }
-      this.reset();
-      unlockAdmin(false);
-    });
-
-    document.getElementById("demo-admin-unlock").addEventListener("click", () => {
-      if (window.location.protocol.startsWith("http")) return;
-      unlockAdmin(false);
-    });
-    document.getElementById("demo-nonadmin-test").addEventListener("click", () => {
-      if (window.location.protocol.startsWith("http")) return;
-      const err = document.getElementById("gate-error");
-      err.textContent = "HTTP 403 Forbidden: Logged-in role 'doctor' (dr_rohan) is blocked from accessing /admin. Security event logged.";
-      err.classList.remove("hidden");
-      addLog("dr_rohan", "UNAUTHORIZED_ADMIN_PAGE_ACCESS (/admin)", 403);
-      toast("Non-admin blocked with HTTP 403 Forbidden!", "red");
-    });
-    document.getElementById("admin-logout-btn").addEventListener("click", lockAdmin);
-
-    // Tab switching
-    document.querySelectorAll(".admin-tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const target = btn.dataset.tab;
-        document.querySelectorAll(".admin-panel").forEach(p => p.classList.add("hidden"));
-        document.getElementById("panel-" + target).classList.remove("hidden");
-        document.querySelectorAll(".admin-tab").forEach(b => {
-          b.className = b.dataset.tab === target
-            ? "admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950"
-            : "admin-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white";
-        });
+      function openCmd() { cmdModal.classList.remove('hidden'); cmdInput.value = ''; renderCmds(''); cmdInput.focus(); }
+      document.getElementById('open-cmd-btn').addEventListener('click', openCmd);
+      cmdInput.addEventListener('input', function () { renderCmds(cmdInput.value); });
+      cmdModal.addEventListener('click', function (e) { if (e.target === cmdModal) cmdModal.classList.add('hidden'); });
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmd(); }
+        else if (e.key === 'Escape') { cmdModal.classList.add('hidden'); toggleSidebar(true); }
       });
-    });
 
-    function renderStaff() {
-      const tbody = document.getElementById("admin-staff-tbody");
-      if (state.liveMode && Array.isArray(state.staffUsers) && state.staffUsers.length) {
-        tbody.innerHTML = state.staffUsers.map(u => {
-          const isActive = Number(u.active ?? 1) === 1;
-          const isSelfAdmin = u.username === "admin";
-          return `
-            <tr class="hover:bg-slate-800/40">
-              <td class="px-5 py-3 font-mono text-teal-300 font-semibold">${escHtml(u.username)}</td>
-              <td class="px-5 py-3 font-semibold text-white">${escHtml(u.full_name)}</td>
-              <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${escHtml(u.role)}</td>
-              <td class="px-5 py-3">${escHtml(u.department || "—")}</td>
-              <td class="px-5 py-3">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${isActive ? "ACTIVE" : "DISABLED"}</span>
-                <span class="ml-1.5 text-[10px] text-slate-400">${Number(u.has_recovery_contact) === 1 ? "Recovery Set" : "No Recovery"}</span>
-              </td>
-              <td class="px-5 py-3">
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <input type="password" minlength="8" data-pw-input="${escHtml(u.username)}" placeholder="New password (8+)"
-                    class="w-36 rounded bg-[#16263d] border border-slate-700 px-2.5 py-1 text-[11px] text-white" />
-                  <button type="button" data-reset-user="${escHtml(u.username)}"
-                    class="admin-reset-pw-btn px-2.5 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 hover:bg-amber-500 hover:text-slate-950 text-[11px] font-semibold">Set Pw</button>
-                  ${!isSelfAdmin ? `<button type="button" data-toggle-user="${escHtml(u.username)}" data-next-active="${isActive ? "0" : "1"}" class="admin-toggle-user-btn px-2.5 py-1 rounded border text-[11px] font-semibold ${isActive ? "bg-red-500/15 border-red-500/40 text-red-200 hover:bg-red-600 hover:text-white" : "bg-emerald-500/15 border-emerald-500/40 text-emerald-200 hover:bg-emerald-600 hover:text-white"}">${isActive ? "Disable" : "Enable"}</button>` : `<span class="text-[10px] text-slate-500 font-mono">Primary Admin</span>`}
-                </div>
-              </td>
-            </tr>
-          `;
-        }).join("");
+      function renderStaffUsers() {
+        var tbody = document.getElementById('admin-staff-tbody');
+        if (!allStaffUsers.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">No staff accounts found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = allStaffUsers.map(function (u) {
+          var active = Number(u.active == null ? 1 : u.active) === 1;
+          var isPrimaryAdmin = u.username === 'admin';
+          return '<tr>' +
+            '<td><strong style="font-family:monospace;color:#00768A">' + esc(u.username) + '</strong></td>' +
+            '<td>' + esc(u.full_name) + '</td>' +
+            '<td><span class="badge b-blue">' + esc(u.role) + '</span></td>' +
+            '<td>' + esc(u.department || '-') + '</td>' +
+            '<td><span class="badge ' + (active ? 'b-green' : 'b-red') + '">' + (active ? 'ACTIVE' : 'DISABLED') + '</span>' +
+            ' <span style="font-size:11px;color:#64748b">' + (Number(u.has_recovery_contact) === 1 ? 'Recovery Set' : 'No Recovery') + '</span></td>' +
+            '<td><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+            '<input type="password" minlength="8" data-pw-input="' + esc(u.username) + '" placeholder="New pw (8+)" class="inp" style="width:140px;padding:6px 9px;font-size:12px" />' +
+            '<button type="button" class="btn-out admin-set-pw-btn" data-user="' + esc(u.username) + '">Set Pw</button>' +
+            (isPrimaryAdmin ? '' : ('<button type="button" class="' + (active ? 'btn-red' : 'btn-ok') + ' admin-toggle-btn" data-user="' + esc(u.username) + '" data-next="' + (active ? '0' : '1') + '">' + (active ? 'Disable' : 'Enable') + '</button>')) +
+            '</div></td></tr>';
+        }).join('');
 
-        tbody.querySelectorAll(".admin-reset-pw-btn").forEach(btn => {
-          btn.addEventListener("click", async function () {
-            const uname = this.dataset.resetUser;
-            const inp = tbody.querySelector(`[data-pw-input="${CSS.escape(uname)}"]`);
-            const newPw = inp ? inp.value : "";
-            if (!newPw || newPw.length < 8) {
-              toast("Password must be at least 8 characters with letters and digits.", "red");
-              return;
-            }
-            const res = await fetch("/api/admin/users/reset-password", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-              body: JSON.stringify({ username: uname, new_password: newPw }),
-              credentials: "same-origin"
+        tbody.querySelectorAll('.admin-set-pw-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var uname = btn.getAttribute('data-user');
+            var inp = tbody.querySelector('[data-pw-input="' + CSS.escape(uname) + '"]');
+            var pw = inp ? inp.value : '';
+            if (!pw || pw.length < 8) { toast('Password must be 8+ characters with a letter and digit.', 'red'); return; }
+            fetch('/api/admin/users/reset-password', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+              body: JSON.stringify({ username: uname, new_password: pw })
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+              if (res.ok) { if (inp) inp.value = ''; toast('Updated login password for ' + uname + '!'); }
+              else toast(res.d.error || 'Reset failed', 'red');
             });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok) {
-              if (inp) inp.value = "";
-              toast(`Updated individual login password for ${uname}!`);
-            } else {
-              toast(data.error || "Password reset failed", "red");
-            }
           });
         });
 
-        tbody.querySelectorAll(".admin-toggle-user-btn").forEach(btn => {
-          btn.addEventListener("click", async function () {
-            const uname = this.dataset.toggleUser;
-            const nextActive = this.dataset.nextActive === "1";
-            const res = await fetch(`/api/admin/users/${encodeURIComponent(uname)}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-              body: JSON.stringify({ active: nextActive }),
-              credentials: "same-origin"
+        tbody.querySelectorAll('.admin-toggle-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var uname = btn.getAttribute('data-user');
+            var nextActive = btn.getAttribute('data-next') === '1';
+            fetch('/api/admin/users/' + encodeURIComponent(uname), {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+              body: JSON.stringify({ active: nextActive })
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+              if (res.ok) { toast(uname + (nextActive ? ' enabled.' : ' disabled.')); loadUsers(); }
+              else toast(res.d.error || 'Status update failed', 'red');
             });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok) {
-              toast(`${uname} is now ${nextActive ? "ACTIVE" : "DISABLED"}.`);
-              await refreshAdminUsers();
-            } else {
-              toast(data.error || "Status update failed", "red");
-            }
           });
         });
-        return;
       }
 
-      tbody.innerHTML = STAFF_MATRIX.map(s => `
-        <tr class="hover:bg-slate-800/40">
-          <td class="px-5 py-3 font-mono text-teal-300">${escHtml(s.user)}</td>
-          <td class="px-5 py-3 font-semibold text-white">${escHtml(s.name)}</td>
-          <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${escHtml(s.role)}</td>
-          <td class="px-5 py-3">${escHtml(s.dept)} · ${escHtml(s.fee)}</td>
-          <td class="px-5 py-3">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.role === "admin" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${escHtml(s.adminAccess)}</span>
-          </td>
-          <td class="px-5 py-3 text-slate-400">Live server required</td>
-        </tr>
-      `).join("");
-    }
-
-    async function refreshAdminUsers() {
-      if (!state.liveMode) return;
-      const res = await fetch("/api/admin/users", { credentials: "same-origin" });
-      if (res.ok) {
-        const d = await res.json().catch(() => ({}));
-        state.staffUsers = Array.isArray(d.staff_users) ? d.staff_users : [];
-        renderStaff();
+      function loadUsers() {
+        fetch('/api/admin/users').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (d && Array.isArray(d.staff_users)) { allStaffUsers = d.staff_users; renderStaffUsers(); }
+        }).catch(function () {});
       }
-    }
 
-    document.getElementById("admin-create-user-form").addEventListener("submit", async function (e) {
-      e.preventDefault();
-      if (!state.liveMode) {
-        toast("Start python server.py to create live staff accounts.", "red");
-        return;
-      }
-      const username = document.getElementById("admin-new-username").value.trim().toLowerCase();
-      const full_name = document.getElementById("admin-new-fullname").value.trim();
-      const role = document.getElementById("admin-new-role").value;
-      const department = document.getElementById("admin-new-dept").value.trim();
-      const password = document.getElementById("admin-new-password").value;
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-        body: JSON.stringify({ username, full_name, role, department, password }),
-        credentials: "same-origin"
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        this.reset();
-        toast(`Created account '${username}' with its own login password!`);
-        await refreshAdminUsers();
-      } else {
-        toast(data.error || "Could not create user", "red");
-      }
-    });
-
-    function renderHolidays() {
-      const box = document.getElementById("admin-holidays-list");
-      box.innerHTML = state.holidays.length
-        ? state.holidays.map(h => `
-            <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
-              <span><strong class="text-white">${escHtml(h.doc)}</strong> · ${escHtml(h.reason)}</span>
-              <span class="font-mono text-amber-300">${escHtml(h.date)}</span>
-            </div>
-          `).join("")
-        : `<div class="text-slate-400">No upcoming holidays scheduled.</div>`;
-    }
-
-    document.getElementById("admin-holiday-form").addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const sel = document.getElementById("hol-doc");
-      const docUser = sel.value;
-      const docName = sel.options[sel.selectedIndex].text.split(" (")[0];
-      const dt = document.getElementById("hol-date").value;
-      const reason = document.getElementById("hol-reason").value.trim().replace(/[<>]/g, "");
-      if (!dt || !reason) return;
-      if (state.liveMode) {
-        const res = await fetch("/api/staff/holidays", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-          body: JSON.stringify({ doctor_username: docUser, holiday_date: dt, reason }),
-          credentials: "same-origin"
+      function renderAppointments() {
+        var q = (document.getElementById('appt-search').value || '').trim().toLowerCase();
+        var st = document.getElementById('appt-status-filter').value;
+        var rows = allAppointments.filter(function (a) {
+          if (st && String(a.status || '').toLowerCase() !== st) return false;
+          if (!q) return true;
+          var hay = ((a.appointment_number || '') + ' ' + (a.first_name || '') + ' ' + (a.last_name || '') + ' ' + (a.department || '')).toLowerCase();
+          return hay.indexOf(q) !== -1;
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          toast(data.error || "Failed to save holiday", "red");
-          return;
-        }
-        document.getElementById("hol-reason").value = "";
-        toast(`Saved holiday ${dt} for ${docName} to SQLite`);
-        await initLiveAdmin();
-        return;
+        var tbody = document.getElementById('appt-tbody');
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No matching appointments found.</td></tr>'; return; }
+        tbody.innerHTML = rows.slice(0, 60).map(function (a) {
+          var s = String(a.status || 'confirmed').toLowerCase();
+          var cls = s === 'cancelled' ? 'b-red' : (s === 'completed' ? 'b-blue' : (s === 'pending' ? 'b-amber' : 'b-green'));
+          return '<tr><td><strong>' + esc(a.appointment_number) + '</strong></td><td>' + esc((a.first_name || '') + ' ' + (a.last_name || '')) + '</td><td>' + esc(a.department) + '</td><td>' + esc(a.appointment_date) + (a.slot_time ? ' ' + esc(a.slot_time) : '') + '</td><td><span class="badge ' + cls + '">' + esc(s) + '</span></td></tr>';
+        }).join('');
       }
-      state.holidays.unshift({ doc: docName, date: dt, reason });
-      addLog("admin", `ADD_HOLIDAY:${docUser}:${dt}`, 201);
-      renderHolidays();
-      document.getElementById("hol-reason").value = "";
-      toast(`Blocked ${dt} for ${docName}`);
-    });
+      var searchTimer = null;
+      document.getElementById('appt-search').addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(renderAppointments, 150); });
+      document.getElementById('appt-status-filter').addEventListener('change', renderAppointments);
 
-    function renderAudit() {
-      const filter = document.getElementById("audit-filter").value;
-      const items = state.logs.filter(l => {
-        if (filter === "blocked") return l.status >= 400;
-        if (filter === "ok") return l.status < 400;
-        return true;
-      });
-      document.getElementById("admin-audit-list").innerHTML = items.map(l => `
-        <div class="flex items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
-          <span class="text-slate-500">${escHtml(l.time)}</span>
-          <span class="text-teal-300 font-semibold">${escHtml(l.actor)}</span>
-          <span class="text-slate-200 flex-1 truncate">${escHtml(l.action)}</span>
-          <span class="${l.status >= 400 ? "text-red-400" : "text-emerald-400"} font-bold">HTTP ${l.status}</span>
-        </div>
-      `).join("");
-    }
-    document.getElementById("audit-filter").addEventListener("change", renderAudit);
-
-    let revChart = null;
-    function initRevenueChart(breakdown = null) {
-      const c = document.getElementById("admin-revenue-chart");
-      if (!c) return;
-      const labels = breakdown && breakdown.length
-        ? breakdown.map(d => d.department)
-        : ["Orthopaedics", "Obgy", "Dental Surgery", "General Medicine"];
-      const values = breakdown && breakdown.length
-        ? breakdown.map(d => Number(d.paid_inr || 0) + Number(d.pending_inr || 0))
-        : [1500, 500, 400, 600];
-      if (revChart) {
-        revChart.data.labels = labels;
-        revChart.data.datasets[0].data = values;
-        revChart.update();
-        return;
+      function renderAuditLogs() {
+        var f = document.getElementById('audit-filter').value;
+        var rows = allAuditLogs.filter(function (l) {
+          var code = Number(l.status_code || 200);
+          if (f === 'blocked') return code >= 400;
+          if (f === 'ok') return code < 400;
+          return true;
+        });
+        var tbody = document.getElementById('audit-tbody');
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No audit logs match filter.</td></tr>'; return; }
+        tbody.innerHTML = rows.map(function (l) {
+          var code = Number(l.status_code || 200);
+          var cls = code >= 400 ? 'b-red' : 'b-green';
+          var ts = l.created_at ? new Date(l.created_at * 1000).toLocaleString() : '-';
+          return '<tr><td>' + esc(ts) + '</td><td><strong>' + esc(l.actor) + '</strong></td><td>' + esc(l.action) + '</td><td>' + esc(l.client_ip) + '</td><td><span class="badge ' + cls + '">' + esc(code) + '</span></td></tr>';
+        }).join('');
       }
-      revChart = new Chart(c.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Total Billable Revenue (INR)",
-            data: values,
-            backgroundColor: ["#14b8a6", "#d8b54c", "#38bdf8", "#10b981"],
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: "#cbd5e1", font: { size: 11 } }, grid: { display: false } },
-            y: { ticks: { color: "#94a3b8", font: { size: 11 } }, grid: { color: "rgba(148,163,184,0.12)" }, beginAtZero: true }
+      document.getElementById('audit-filter').addEventListener('change', renderAuditLogs);
+
+      function loadAll() {
+        fetch('/api/auth/me').then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+          if (me && me.username) {
+            csrfToken = me.csrf_token || '';
+            document.getElementById('admin-user-pill').textContent = (me.username || 'ADMIN').toUpperCase();
           }
-        }
+        }).catch(function () {});
+
+        fetch('/api/admin/overview').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (!d || !d.overview) return;
+          var o = d.overview;
+          document.getElementById('kpi-today').textContent = o.today_appointments || 0;
+          document.getElementById('kpi-date').textContent = 'IST Date: ' + (o.date_ist || '');
+          document.getElementById('kpi-total').textContent = o.total_appointments || 0;
+          document.getElementById('kpi-patients').textContent = (o.total_patients || 0) + ' registered patients';
+          document.getElementById('kpi-paid').textContent = '\u20B9' + (o.paid_revenue_inr || 0);
+          document.getElementById('kpi-pending').textContent = 'Pending: \u20B9' + (o.pending_revenue_inr || 0);
+          document.getElementById('kpi-lowstock-sub').textContent = (o.low_stock_alerts || 0) + ' low-stock alerts';
+          document.getElementById('m-docs').textContent = o.total_doctors || 4;
+          if (o.date_ist) {
+            var hd = document.getElementById('hol-date');
+            if (hd && !hd.value) { hd.min = o.date_ist; hd.value = o.date_ist; }
+          }
+        }).catch(function () {});
+
+        fetch('/api/admin/metrics').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (!d || !d.metrics) return;
+          var m = d.metrics;
+          document.getElementById('m-reqs').textContent = m.total_requests || 0;
+          document.getElementById('m-5xx').textContent = m.status_5xx || 0;
+          var jobs = m.background_jobs || {};
+          document.getElementById('m-jobs').textContent = (jobs.completed || 0) + ' done / ' + (jobs.pending || 0) + ' pending';
+        }).catch(function () {});
+
+        loadUsers();
+
+        fetch('/api/staff/appointments').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (!d) return;
+          allAppointments = d.appointments || [];
+          renderAppointments();
+        }).catch(function () {});
+
+        fetch('/api/staff/holidays').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          var hols = (d && d.holidays) || [];
+          document.getElementById('admin-holidays-list').innerHTML = hols.length
+            ? hols.map(function (h) {
+                return '<div style="display:flex;justify-content:space-between;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0"><span><strong>' + esc(h.doctor_name || h.doctor_username) + '</strong> &bull; ' + esc(h.reason) + '</span><span style="font-family:monospace;color:#b45309">' + esc(h.holiday_date) + '</span></div>';
+              }).join('')
+            : '<div class="empty">No upcoming holidays scheduled.</div>';
+        }).catch(function () {});
+
+        fetch('/api/pharmacy/reports').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          if (!d || !d.report) return;
+          var r = d.report;
+          document.getElementById('ph-sales').textContent = '\u20B9' + (r.total_sales_inr || 0);
+          document.getElementById('ph-bills').textContent = (r.total_bills || 0) + ' pharmacy bills';
+          document.getElementById('ph-purchases').textContent = '\u20B9' + (r.total_purchases_inr || 0);
+          document.getElementById('ph-margin').textContent = '\u20B9' + (r.net_margin_inr || 0);
+          document.getElementById('ph-low').textContent = r.low_stock_items || 0;
+        }).catch(function () {});
+
+        fetch('/api/lab/catalog').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          var tbody = document.getElementById('lab-tbody');
+          var items = (d && d.catalog) || [];
+          tbody.innerHTML = items.length ? items.map(function (c) {
+            return '<tr><td><strong>' + esc(c.catalog_code) + '</strong></td><td>' + esc(c.test_name) + '</td><td>' + esc(c.category) + '</td><td><strong>&#8377;' + esc(c.default_price_inr) + '</strong></td></tr>';
+          }).join('') : '<tr><td colspan="4" class="empty">No lab tests configured yet.</td></tr>';
+        }).catch(function () {});
+
+        fetch('/api/admin/audit').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+          allAuditLogs = (d && d.audit_logs) || [];
+          renderAuditLogs();
+        }).catch(function () {});
+      }
+
+      document.getElementById('admin-create-user-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var form = this;
+        fetch('/api/admin/users', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({
+            username: document.getElementById('admin-new-username').value.trim().toLowerCase(),
+            full_name: document.getElementById('admin-new-fullname').value.trim(),
+            role: document.getElementById('admin-new-role').value,
+            department: document.getElementById('admin-new-dept').value.trim(),
+            password: document.getElementById('admin-new-password').value
+          })
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+          if (res.ok) { form.reset(); toast('Created account with individual login password!'); loadUsers(); }
+          else toast(res.d.error || 'Could not create user', 'red');
+        });
       });
-    }
 
-    // Auto-load real SQLite admin KPIs & audit logs when served via live /admin route
-    async function initLiveAdmin() {
-      if (!window.location.protocol.startsWith("http")) return;
-      const demoBox = document.getElementById("admin-demo-box");
-      if (demoBox) demoBox.classList.add("hidden");
-      try {
-        const me = await fetch("/api/auth/me", { credentials: "same-origin" });
-        if (!me.ok) return;
-        const meData = await me.json();
-        if (meData.role !== "admin") return;
-        state.liveMode = true;
-        state.csrf = meData.csrf_token || state.csrf;
+      document.getElementById('admin-holiday-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        fetch('/api/staff/holidays', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({
+            doctor_username: document.getElementById('hol-doc').value,
+            holiday_date: document.getElementById('hol-date').value,
+            reason: document.getElementById('hol-reason').value.trim()
+          })
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+          if (res.ok) { document.getElementById('hol-reason').value = ''; toast('Doctor holiday blocked!'); loadAll(); }
+          else toast(res.d.error || 'Failed to block holiday', 'red');
+        });
+      });
 
-        const [ovRes, auRes, holRes, metRes, usrRes] = await Promise.all([
-          fetch("/api/admin/overview", { credentials: "same-origin" }),
-          fetch("/api/admin/audit", { credentials: "same-origin" }),
-          fetch("/api/staff/holidays", { credentials: "same-origin" }),
-          fetch("/api/admin/metrics", { credentials: "same-origin" }),
-          fetch("/api/admin/users", { credentials: "same-origin" })
-        ]);
-        let deptBreakdown = null;
-        if (ovRes.ok) {
-          const ov = (await ovRes.json()).overview || {};
-          document.getElementById("kpi-total-appts").textContent = String(ov.total_appointments ?? 0);
-          document.getElementById("kpi-today-appts").textContent = `${ov.today_appointments ?? 0} scheduled today`;
-          document.getElementById("kpi-paid-rev").textContent = "₹" + String(ov.paid_revenue_inr ?? 0);
-          document.getElementById("kpi-pending-rev").textContent = "₹" + String(ov.pending_revenue_inr ?? 0);
-          document.getElementById("kpi-low-stock").textContent = String(ov.low_stock_alerts ?? 0);
-          if (ov.date_ist) {
-            const hd = document.getElementById("hol-date");
-            if (hd) { hd.min = ov.date_ist; hd.value = ov.date_ist; }
-          }
-          if (Array.isArray(ov.department_breakdown)) deptBreakdown = ov.department_breakdown;
-        }
-        if (auRes.ok) {
-          const logs = (await auRes.json()).audit_logs || [];
-          state.logs = logs.map(l => ({
-            time: new Date((l.created_at || 0) * 1000).toTimeString().slice(0, 8),
-            actor: l.actor,
-            action: l.action,
-            status: l.status_code
-          }));
-        }
-        if (holRes.ok) {
-          const hols = (await holRes.json()).holidays || [];
-          state.holidays = hols.map(h => ({
-            doc: h.doctor_name || h.doctor_username,
-            date: h.holiday_date,
-            reason: h.reason
-          }));
-        }
-        if (metRes.ok) {
-          const m = (await metRes.json()).metrics || {};
-          document.getElementById("m-total").textContent = String(m.total_requests ?? 0);
-          document.getElementById("m-2xx").textContent = String(m.status_2xx ?? 0);
-          document.getElementById("m-4xx").textContent = String(m.status_4xx ?? 0);
-          document.getElementById("m-429").textContent = String(m.status_429 ?? 0);
-          document.getElementById("m-5xx").textContent = String(m.status_5xx ?? 0);
-          const bj = m.background_jobs || {};
-          document.getElementById("m-jobs").textContent = `${bj.completed ?? 0} ok`;
-        }
-        if (usrRes && usrRes.ok) {
-          const ud = await usrRes.json();
-          state.staffUsers = Array.isArray(ud.staff_users) ? ud.staff_users : [];
-        }
-        unlockAdmin(true);
-        initRevenueChart(deptBreakdown);
-        document.getElementById("admin-csrf-display").textContent = state.csrf + " (LIVE SQLite)";
-      } catch (_) {}
-    }
-    initLiveAdmin();
+      document.getElementById('add-lab-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = document.getElementById('lab-msg');
+        msg.classList.add('hidden');
+        fetch('/api/lab/catalog', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({
+            catalog_code: document.getElementById('lab-code').value.trim().toUpperCase(),
+            test_name: document.getElementById('lab-name').value.trim(),
+            category: document.getElementById('lab-cat').value.trim() || 'Pathology',
+            default_price_inr: Number(document.getElementById('lab-price').value || 0)
+          })
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+          msg.style.color = res.ok ? '#047857' : '#b91c1c';
+          msg.textContent = res.ok ? 'Lab test added to catalog!' : (res.d.error || 'Could not add test.');
+          msg.classList.remove('hidden');
+          if (res.ok) { document.getElementById('add-lab-form').reset(); loadAll(); }
+        });
+      });
 
+      document.getElementById('admin-change-pw-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var cur = document.getElementById('adm-cp-cur').value;
+        var nw = document.getElementById('adm-cp-new').value;
+        var cnf = document.getElementById('adm-cp-cnf').value;
+        if (nw !== cnf) { toast('Passwords do not match.', 'red'); return; }
+        var form = this;
+        fetch('/api/auth/change-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ current_password: cur, new_password: nw })
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (res) {
+          if (res.ok) { form.reset(); toast('Admin password rotated!'); }
+          else toast(res.d.error || 'Password change failed', 'red');
+        });
+      });
+
+      document.getElementById('admin-logout-btn').addEventListener('click', function () {
+        fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+          .finally(function () { location.href = '/staff'; });
+      });
+      document.getElementById('refresh-all-btn').addEventListener('click', loadAll);
+      loadAll();
+    })();
   </script>
 </body>
 </html>
