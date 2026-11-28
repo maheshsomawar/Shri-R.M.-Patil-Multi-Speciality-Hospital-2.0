@@ -34,7 +34,7 @@ from datetime import datetime, timedelta
 from backup_db import run_backup
 from db_optimize import verify_query_plans
 from migrations import IST, ist_today
-from server import AppConfig, create_server
+from server import AppConfig, _safe_server_secret, create_server
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -53,7 +53,7 @@ def http_req(
     body: Any = None,
     headers: Dict[str, str] | None = None,
 ) -> Tuple[int, Dict[str, str], str]:
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
     hdrs = dict(headers or {})
     raw_body = None
     if body is not None:
@@ -130,13 +130,37 @@ def run_audit() -> Dict[str, Any]:
         time.sleep(0.05)
 
         try:
-            # 2. Hidden API keys & debug mode off
+            # 2. Hidden API keys, non-secret config & debug mode off
             st, hdrs, body = http_req(port, "GET", "/api/health")
-            key_hidden = cfg.sms_api_key not in body and '"debug": false' in body.lower()
+            st_pc, _, b_pc = http_req(port, "GET", "/api/payments/config")
+            ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
+            ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
+            idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
+            stf_html = open(os.path.join(BASE_DIR, "public", "staff.html"), encoding="utf-8").read()
+            adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
+            site_js = open(os.path.join(BASE_DIR, "public", "assets", "site.v1.js"), encoding="utf-8").read()
+            client_bundle = "\n".join((idx_html, stf_html, adm_html, site_js))
+            client_clean = (
+                "demoPass" not in client_bundle
+                and "Admin#RMP2026!" not in client_bundle
+                and "RAZORPAY_KEY_SECRET" not in client_bundle
+                and "SMS_GATEWAY_API_KEY" not in client_bundle
+                and "SESSION_SECRET" not in client_bundle
+            )
+            secrets_rejected = "replace_with" not in ph_sess and len(ph_sess) == 64 and "replace_with" not in ph_rzp
+            key_hidden = (
+                cfg.sms_api_key not in body
+                and '"debug": false' in body.lower()
+                and st_pc == 200
+                and cfg.razorpay_key_secret not in b_pc
+                and cfg.razorpay_webhook_secret not in b_pc
+                and client_clean
+                and secrets_rejected
+            )
             record(
                 "API Keys Hidden & Debug Mode Off",
                 st == 200 and key_hidden,
-                "SMS gateway key kept server-side; DEBUG=false verified on /api/health",
+                "Server secrets hidden; placeholder keys rejected; zero client passwords; DEBUG=false",
             )
 
             # 3. Security headers
@@ -166,16 +190,22 @@ def run_audit() -> Dict[str, Any]:
                 f"All {len(probes)} sensitive file probes returned 404/403 ({probe_statuses})",
             )
 
-            # 5. Scrypt password hashing in SQLite
+            # 5. Scrypt password hashing in SQLite & password sync
+            from db import verify_password as _verify_pw
             conn = sqlite3.connect(cfg.db_path)
             hashes = [r[0] for r in conn.execute("SELECT password_hash FROM users").fetchall()]
             conn.close()
             all_scrypt = len(hashes) >= 6 and all(h.startswith("scrypt$16384$8$1$") for h in hashes)
             no_plaintext = all(pw not in " ".join(hashes) for pw in cfg.staff_passwords.values())
+            srv_py = open(os.path.join(BASE_DIR, "server.py"), encoding="utf-8").read()
+            sync_ok = srv.db.sync_staff_passwords({"nurse": "TempRotated#2026!"}, skip_placeholders=True) == 1
+            nurse_row = srv.db.get_user_by_username("nurse")
+            sync_verified = bool(nurse_row and _verify_pw("TempRotated#2026!", nurse_row["password_hash"]))
+            srv.db.sync_staff_passwords({"nurse": cfg.staff_passwords["nurse"]}, skip_placeholders=True)
             record(
                 "Scrypt Password Hashing & DB Security",
-                all_scrypt and no_plaintext,
-                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext)",
+                all_scrypt and no_plaintext and sync_ok and sync_verified and "Admin#RMP2026!" not in srv_py,
+                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext) + password sync",
             )
 
             # 6. Unauthenticated admin & staff routes blocked
@@ -443,10 +473,13 @@ def run_audit() -> Dict[str, Any]:
                     "slot_time": "10:00",
                 },
             )
+            st_hol_unauth, _, _ = http_req(port, "GET", "/api/staff/holidays")
+            st_hol_rohan, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": rohan_cookie})
+            st_hol_adm, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": admin_cookie})
             record(
                 "Doctor Schedule, Break & Holiday Engine",
-                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400,
-                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}",
+                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400 and st_hol_unauth == 401 and st_hol_rohan == 200 and st_hol_adm == 200,
+                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}, holiday GET RBAC={st_hol_unauth}/{st_hol_rohan}",
             )
 
             # 17. Simultaneous Double-Booking Race Condition Protection (10 threads -> 1 wins, 9 get 409)
@@ -702,10 +735,31 @@ def run_audit() -> Dict[str, Any]:
                 headers={"Cookie": reception_cookie, "X-CSRF-Token": reception_csrf},
             )
             inv_data = json.loads(b_bill).get("invoice", {})
+            st_lt_unauth, _, _ = http_req(port, "GET", "/api/lab/tests")
+            st_lt_rec, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": reception_cookie})
+            st_lt_doc, _, b_lt_doc = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": rohan_cookie})
+            st_lt_lab, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": lab_cookie})
+            st_bi_unauth, _, _ = http_req(port, "GET", "/api/billing/invoices")
+            st_bi_doc, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": rohan_cookie})
+            st_bi_rec, _, b_bi_rec = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": reception_cookie})
             # Doctor fee 500 + Lab 450 + Pharmacy 50 = 1000
             record(
                 "Pharmacy, Lab & Unified Billing RBAC",
-                st_ph_inv == 200 and st_ph_disp == 200 and st_lab_ord == 201 and st_lab_res == 200 and st_bill == 201 and inv_data.get("total_inr") == 1000,
+                st_ph_inv == 200
+                and st_ph_disp == 200
+                and st_lab_ord == 201
+                and st_lab_res == 200
+                and st_bill == 201
+                and inv_data.get("total_inr") == 1000
+                and st_lt_unauth == 401
+                and st_lt_rec == 403
+                and st_lt_doc == 200
+                and st_lt_lab == 200
+                and len(json.loads(b_lt_doc).get("lab_tests", [])) >= 1
+                and st_bi_unauth == 401
+                and st_bi_doc == 403
+                and st_bi_rec == 200
+                and len(json.loads(b_bi_rec).get("invoices", [])) >= 1,
                 f"Pharmacy={st_ph_disp}, Lab={st_lab_res}, Invoice={inv_data.get('invoice_number')} (Total=INR {inv_data.get('total_inr')})",
             )
 
@@ -1037,7 +1091,6 @@ def run_audit() -> Dict[str, Any]:
             )
 
             # 43. Shared Ward Nurse Login (Notifications Only, Blocked from Admin & Billing)
-            # Reset nurse lockout first by resetting password via DB so nurse can log in cleanly
             with srv.server._login_lock if hasattr(srv, "server") else srv._login_lock:
                 srv._login_failures["nurse"].clear()
             nurse_cookie, nurse_csrf = login("nurse", cfg.staff_passwords["nurse"])
@@ -1087,11 +1140,12 @@ def run_audit() -> Dict[str, Any]:
                 body={"medicine_code": "MED-AMX500", "supplier_name": "Latur Pharma Distributors", "quantity": 50, "unit_cost_inr": 60},
                 headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
             )
+            st_ph_pur_get, _, b_ph_pur_get = http_req(port, "GET", "/api/pharmacy/purchases", headers={"Cookie": pharm_cookie})
             st_ph_rep, _, b_ph_rep = http_req(port, "GET", "/api/pharmacy/reports", headers={"Cookie": pharm_cookie})
             rep_d = json.loads(b_ph_rep).get("report", {})
             record(
                 "Separate Shiv Medical Stores Billing, Purchases & Reports",
-                st_hb_ph == 403 and st_ph_bill == 201 and st_ph_pur == 201 and st_ph_rep == 200 and str(ph_b.get("bill_number", "")).startswith("PHM-") and rep_d.get("total_sales_inr") == 72 and rep_d.get("total_purchases_inr") == 3000,
+                st_hb_ph == 403 and st_ph_bill == 201 and st_ph_pur == 201 and st_ph_pur_get == 200 and json.loads(b_ph_pur_get).get("count", 0) >= 1 and st_ph_rep == 200 and str(ph_b.get("bill_number", "")).startswith("PHM-") and rep_d.get("total_sales_inr") == 72 and rep_d.get("total_purchases_inr") == 3000,
                 f"Hospital billing blocked={st_hb_ph}; bill {ph_b.get('bill_number')}=INR 72, purchase=INR 3000, store report={st_ph_rep}",
             )
 

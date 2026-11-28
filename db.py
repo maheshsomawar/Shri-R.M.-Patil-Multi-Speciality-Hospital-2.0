@@ -11,6 +11,7 @@ Database layer for Shri R.M. Patil Multi Speciality Hospital.
 import contextlib
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import sqlite3
@@ -96,7 +97,6 @@ class HospitalDB:
         conn = sqlite3.connect(self.db_path, timeout=15.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
             conn.execute("PRAGMA busy_timeout=10000;")
@@ -110,6 +110,7 @@ class HospitalDB:
 
     def _init_schema(self) -> None:
         with self._connect() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
             run_migrations(conn)
 
     def list_departments(self) -> List[Dict[str, Any]]:
@@ -165,6 +166,27 @@ class HospitalDB:
                         """,
                         (username, full_name, role, department, pw_hash, now),
                     )
+
+    def sync_staff_passwords(self, staff_passwords: Dict[str, str], skip_placeholders: bool = True) -> int:
+        """Update salted scrypt password hashes in SQLite from .env values (skips change_me placeholders)."""
+        updated = 0
+        with self._connect() as conn:
+            for username, raw_pw in staff_passwords.items():
+                if not raw_pw:
+                    continue
+                if skip_placeholders and raw_pw.startswith("change_me_"):
+                    continue
+                row = conn.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,)).fetchone()
+                if not row:
+                    continue
+                if verify_password(raw_pw, row["password_hash"]):
+                    continue
+                conn.execute(
+                    "UPDATE users SET password_hash = ? WHERE id = ?",
+                    (hash_password(raw_pw), row["id"]),
+                )
+                updated += 1
+        return updated
 
     def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
         with self._connect() as conn:
@@ -264,6 +286,34 @@ class HospitalDB:
                 (doctor_username, holiday_date, reason, now),
             )
         return {"doctor_username": doctor_username, "holiday_date": holiday_date, "reason": reason}
+
+    def list_doctor_holidays(self, doctor_username: Optional[str] = None) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            if doctor_username:
+                rows = conn.execute(
+                    """
+                    SELECT h.id, h.doctor_username, COALESCE(d.full_name, h.doctor_username) AS doctor_name,
+                           h.holiday_date, h.reason, h.created_at
+                    FROM doctor_holidays h
+                    LEFT JOIN doctors d ON d.username = h.doctor_username
+                    WHERE h.doctor_username = ?
+                    ORDER BY h.holiday_date ASC
+                    LIMIT 100
+                    """,
+                    (doctor_username,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT h.id, h.doctor_username, COALESCE(d.full_name, h.doctor_username) AS doctor_name,
+                           h.holiday_date, h.reason, h.created_at
+                    FROM doctor_holidays h
+                    LEFT JOIN doctors d ON d.username = h.doctor_username
+                    ORDER BY h.holiday_date ASC
+                    LIMIT 100
+                    """
+                ).fetchall()
+            return [dict(r) for r in rows]
 
     def create_appointment(
         self,
@@ -437,13 +487,13 @@ class HospitalDB:
         clauses = []
         params: List[Any] = []
         if doctor_username:
-            clauses.append("doctor_username = ?")
+            clauses.append("a.doctor_username = ?")
             params.append(doctor_username)
         if appointment_date:
-            clauses.append("appointment_date = ?")
+            clauses.append("a.appointment_date = ?")
             params.append(appointment_date)
         elif month_prefix:
-            clauses.append("appointment_date LIKE ?")
+            clauses.append("a.appointment_date LIKE ?")
             params.append(f"{month_prefix}-%")
 
         where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
@@ -452,11 +502,16 @@ class HospitalDB:
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                SELECT id, appointment_number, reference_code, appointment_date, first_name,
-                       last_name, mobile, department, doctor_username, message, status, created_at
-                FROM appointments
+                SELECT a.id, a.appointment_number, a.reference_code, a.appointment_date, a.slot_time,
+                       a.qr_token, a.queue_token, a.first_name, a.last_name, a.mobile, a.department,
+                       a.doctor_username, a.message, a.status, a.created_at,
+                       COALESCE(p.payment_status, 'PENDING') AS payment_status,
+                       COALESCE(p.amount_inr, 0) AS amount_inr,
+                       COALESCE(p.receipt_number, '') AS receipt_number
+                FROM appointments a
+                LEFT JOIN payments p ON p.appointment_id = a.id
                 {where_sql}
-                ORDER BY appointment_date DESC, created_at DESC
+                ORDER BY a.appointment_date DESC, a.created_at DESC
                 LIMIT ?
                 """,
                 tuple(params),
@@ -756,9 +811,9 @@ class HospitalDB:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, appointment_number, reference_code, appointment_date, first_name,
-                       last_name, mobile, department, doctor_username, message, status,
-                       patient_code, created_at
+                SELECT id, appointment_number, reference_code, appointment_date, slot_time,
+                       qr_token, queue_token, first_name, last_name, mobile, department,
+                       doctor_username, message, status, patient_code, created_at
                 FROM appointments
                 WHERE patient_code = ? OR mobile = ?
                 ORDER BY appointment_date DESC, created_at DESC
@@ -798,11 +853,18 @@ class HospitalDB:
         appointment_number: str,
         doctor_username: str,
         method: str,
+        provider_order_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        amount_inr = self.get_doctor_fee_inr(doctor_username)
         now = int(time.time())
-        order_id = f"order_test_{secrets.token_hex(8)}" if method == "online_razorpay" else None
+        order_id = provider_order_id if (method == "online_razorpay" and provider_order_id) else (
+            f"order_test_{secrets.token_hex(8)}" if method == "online_razorpay" else None
+        )
         with self._connect() as conn:
+            fee_row = conn.execute(
+                "SELECT consultation_fee_inr FROM doctors WHERE username = ?",
+                (doctor_username,),
+            ).fetchone()
+            amount_inr = int(fee_row["consultation_fee_inr"]) if fee_row else 500
             cur = conn.execute(
                 """
                 INSERT INTO payments
@@ -1111,6 +1173,35 @@ class HospitalDB:
             row = conn.execute("SELECT * FROM lab_tests WHERE id = ?", (test_id,)).fetchone()
             return dict(row) if row else None
 
+    def list_lab_tests(self, doctor_username: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            if doctor_username:
+                rows = conn.execute(
+                    """
+                    SELECT l.id, l.test_code, l.appointment_id, a.appointment_number, l.doctor_username,
+                           l.test_name, l.category, l.price_inr, l.sample_status, l.result_summary, l.created_at
+                    FROM lab_tests l
+                    JOIN appointments a ON a.id = l.appointment_id
+                    WHERE l.doctor_username = ?
+                    ORDER BY l.id DESC
+                    LIMIT ?
+                    """,
+                    (doctor_username, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT l.id, l.test_code, l.appointment_id, a.appointment_number, l.doctor_username,
+                           l.test_name, l.category, l.price_inr, l.sample_status, l.result_summary, l.created_at
+                    FROM lab_tests l
+                    JOIN appointments a ON a.id = l.appointment_id
+                    ORDER BY l.id DESC
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+            return [dict(r) for r in rows]
+
     def generate_unified_invoice(self, appointment_id: int, pharmacy_inr: int = 0) -> Optional[Dict[str, Any]]:
         today_compact = ist_today().replace("-", "")
         now = int(time.time())
@@ -1154,6 +1245,21 @@ class HospitalDB:
                     "status": "UNPAID",
                 }
 
+    def list_invoices(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT i.id, i.invoice_number, i.appointment_id, a.appointment_number,
+                       i.consultation_inr, i.lab_inr, i.pharmacy_inr, i.total_inr, i.status, i.created_at
+                FROM invoices i
+                JOIN appointments a ON a.id = i.appointment_id
+                ORDER BY i.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def get_admin_overview(self) -> Dict[str, Any]:
         today = ist_today()
         with self._connect() as conn:
@@ -1164,6 +1270,23 @@ class HospitalDB:
             paid_rev = int(conn.execute("SELECT COALESCE(SUM(amount_inr), 0) FROM payments WHERE payment_status = 'PAID'").fetchone()[0])
             pending_rev = int(conn.execute("SELECT COALESCE(SUM(amount_inr), 0) FROM payments WHERE payment_status = 'PENDING'").fetchone()[0])
             low_stock = int(conn.execute("SELECT COUNT(*) FROM pharmacy_inventory WHERE stock_qty <= reorder_level").fetchone()[0])
+            dept_rows = [
+                dict(r)
+                for r in conn.execute(
+                    """
+                    SELECT d.name AS department,
+                           COUNT(a.id) AS appointments,
+                           COALESCE(SUM(CASE WHEN p.payment_status = 'PAID' THEN p.amount_inr ELSE 0 END), 0) AS paid_inr,
+                           COALESCE(SUM(CASE WHEN p.payment_status = 'PENDING' THEN p.amount_inr ELSE 0 END), 0) AS pending_inr
+                    FROM departments d
+                    LEFT JOIN doctors doc ON doc.department_code = d.code
+                    LEFT JOIN appointments a ON a.doctor_username = doc.username
+                    LEFT JOIN payments p ON p.appointment_id = a.id
+                    GROUP BY d.code, d.name
+                    ORDER BY d.id ASC
+                    """
+                ).fetchall()
+            ]
             return {
                 "date_ist": today,
                 "total_appointments": total_appts,
@@ -1173,6 +1296,7 @@ class HospitalDB:
                 "paid_revenue_inr": paid_rev,
                 "pending_revenue_inr": pending_rev,
                 "low_stock_alerts": low_stock,
+                "department_breakdown": dept_rows,
             }
 
     def get_receipt_detail(self, appointment_id: int) -> Optional[Dict[str, Any]]:
@@ -1376,6 +1500,7 @@ class HospitalDB:
             return counts
 
     def update_user_recovery_contact(self, username: str, email: str, phone: str) -> bool:
+        """Persist a user's recovery email and phone for self-service password reset."""
         with self._connect() as conn:
             cur = conn.execute(
                 "UPDATE users SET email = ?, phone = ? WHERE username = ?",
@@ -1409,6 +1534,7 @@ class HospitalDB:
             return code
 
     def reset_password_with_code(self, username: str, code: str, new_password: str) -> bool:
+        """Consume a valid single-use reset OTP and rotate the user's scrypt password hash."""
         now = int(time.time())
         tok_hash = hashlib.sha256(f"{username}:{code}".encode("utf-8")).hexdigest()
         new_hash = hash_password(new_password)
@@ -1424,11 +1550,12 @@ class HospitalDB:
                 ).fetchone()
                 if not row:
                     return False
-                conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE id = ?", (row["id"],))
+                conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE username = ? AND used = 0", (username,))
                 conn.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
                 return True
 
     def list_nurse_roster_and_alerts(self) -> Dict[str, Any]:
+        """Return today's active OPD queue roster and recent ward alerts for nurse/doctor/admin."""
         today = ist_today()
         with self._connect() as conn:
             roster = [
@@ -1455,6 +1582,7 @@ class HospitalDB:
     def create_nurse_notification(
         self, title: str, message: str, created_by: str, appointment_number: str = "", priority: str = "normal"
     ) -> Dict[str, Any]:
+        """Insert a ward notification scoped strictly to shift alerts."""
         now = int(time.time())
         with self._connect() as conn:
             cur = conn.execute(
@@ -1483,27 +1611,35 @@ class HospitalDB:
         payment_method: str,
         billed_by: str,
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        """Independent billing for Shiv Medical Stores: atomically deducts stock and calculates total server-side."""
-        import json as _json
+        """Independent billing for Shiv Medical Stores: validates all lines before atomically deducting stock."""
         today_compact = ist_today().replace("-", "")
         now = int(time.time())
         with self._booking_lock:
             with self._connect() as conn:
                 resolved_items = []
+                deductions: List[Tuple[int, int]] = []
                 total_inr = 0
+                # Validate and compute all items first so a late failure never commits partial stock deductions.
                 for it in items:
+                    if not isinstance(it, dict):
+                        return None, "Invalid medicine item format"
                     code = str(it.get("medicine_code", "")).strip().upper()
-                    qty = int(it.get("quantity", 0))
+                    try:
+                        qty = int(it.get("quantity", 0))
+                    except (ValueError, TypeError):
+                        return None, "Invalid quantity"
                     if not code or qty <= 0 or qty > 100:
                         return None, "Invalid medicine_code or quantity"
                     med = conn.execute(
                         "SELECT id, medicine_code, name, unit_price_inr, stock_qty FROM pharmacy_inventory WHERE medicine_code = ?",
                         (code,),
                     ).fetchone()
-                    if not med or int(med["stock_qty"]) < qty:
+                    already = sum(q for mid, q in deductions if med and mid == med["id"])
+                    if not med or int(med["stock_qty"]) - already < qty:
                         return None, f"Insufficient stock for {code}"
                     line_total = int(med["unit_price_inr"]) * qty
                     total_inr += line_total
+                    deductions.append((int(med["id"]), qty))
                     resolved_items.append({
                         "medicine_code": code,
                         "name": med["name"],
@@ -1511,12 +1647,13 @@ class HospitalDB:
                         "quantity": qty,
                         "line_total_inr": line_total,
                     })
-                    conn.execute(
-                        "UPDATE pharmacy_inventory SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?",
-                        (qty, now, med["id"]),
-                    )
                 if not resolved_items:
                     return None, "At least one medicine item is required"
+                for med_id, qty in deductions:
+                    conn.execute(
+                        "UPDATE pharmacy_inventory SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?",
+                        (qty, now, med_id),
+                    )
                 cnt = conn.execute(
                     "SELECT COUNT(*) AS cnt FROM pharmacy_bills WHERE bill_number LIKE ?",
                     (f"PHM-{today_compact}-%",),
@@ -1529,7 +1666,7 @@ class HospitalDB:
                     (bill_number, store_name, patient_name, patient_mobile, items_json, total_inr, payment_method, payment_status, billed_by, created_at)
                     VALUES (?, 'Shiv Medical Stores', ?, ?, ?, ?, ?, 'PAID', ?, ?)
                     """,
-                    (bill_no, patient_name, patient_mobile, _json.dumps(resolved_items), total_inr, payment_method, billed_by, now),
+                    (bill_no, patient_name, patient_mobile, json.dumps(resolved_items), total_inr, payment_method, billed_by, now),
                 )
                 return {
                     "id": cur.lastrowid,
@@ -1545,6 +1682,7 @@ class HospitalDB:
                 }, None
 
     def list_pharmacy_bills(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """List recent Shiv Medical Stores bills."""
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT id, bill_number, store_name, patient_name, patient_mobile, total_inr, payment_method, payment_status, billed_by, created_at FROM pharmacy_bills ORDER BY id DESC LIMIT ?",
@@ -1552,7 +1690,17 @@ class HospitalDB:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def list_pharmacy_purchases(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """List recent Shiv Medical Stores stock purchase entries."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, purchase_code, medicine_code, supplier_name, quantity, unit_cost_inr, total_cost_inr, recorded_by, created_at FROM pharmacy_purchases ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def list_lab_catalog(self) -> List[Dict[str, Any]]:
+        """List active pathology/diagnostic test catalog items."""
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT id, catalog_code, test_name, category, default_price_inr, added_by FROM lab_test_catalog WHERE active = 1 ORDER BY id ASC"
@@ -1562,6 +1710,7 @@ class HospitalDB:
     def add_lab_catalog_item(
         self, catalog_code: str, test_name: str, category: str, default_price_inr: int, added_by: str
     ) -> Optional[Dict[str, Any]]:
+        """Add a new diagnostic test definition to the dynamic lab catalog."""
         now = int(time.time())
         with self._connect() as conn:
             try:
@@ -1639,3 +1788,19 @@ class HospitalDB:
                 "net_margin_inr": sales - purchases,
                 "low_stock_items": low_stock,
             }
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    from server import AppConfig
+
+    parser = argparse.ArgumentParser(description="Hospital DB Maintenance")
+    parser.add_argument("--sync-passwords", action="store_true", help="Sync non-placeholder .env staff passwords to SQLite")
+    args = parser.parse_args()
+    if args.sync_passwords:
+        cfg = AppConfig()
+        db = HospitalDB(cfg.db_path)
+        db.seed_default_staff(cfg.staff_passwords)
+        changed = db.sync_staff_passwords(cfg.staff_passwords, skip_placeholders=True)
+        print(json.dumps({"status": "ok", "passwords_updated": changed}))

@@ -33,6 +33,7 @@ from datetime import datetime
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Deque, Dict, Optional, Tuple
+from urllib import error as urllib_error, request as urllib_request
 from urllib.parse import parse_qs, urlparse
 
 from db import HospitalDB, SlotConflictError, SlotUnavailableError, verify_password
@@ -215,7 +216,6 @@ class TokenSigner:
             now = int(time.time())
             with self._revoked_lock:
                 self._revoked[sig] = now + 3600
-                # Prune expired revocations
                 expired = [k for k, exp in self._revoked.items() if exp < now]
                 for k in expired:
                     del self._revoked[k]
@@ -240,6 +240,15 @@ class TokenSigner:
             return None
 
 
+def _safe_server_secret(raw_value: str, min_len: int = 32) -> str:
+    """Reject empty, short, or placeholder secrets and generate an ephemeral cryptographic key."""
+    val = (raw_value or "").strip()
+    lower = val.lower()
+    if len(val) < min_len or any(tok in lower for tok in ("replace_with", "change_me", "placeholder", "replace_me")):
+        return secrets.token_hex(32)
+    return val
+
+
 class AppConfig:
     def __init__(self) -> None:
         load_dotenv_file(os.path.join(BASE_DIR, ".env"))
@@ -248,13 +257,14 @@ class AppConfig:
         self.debug = os.environ.get("DEBUG", "false").lower() == "true"
         self.trust_proxy = os.environ.get("TRUST_PROXY", "false").lower() == "true"
         self.secure_cookies = os.environ.get("SECURE_COOKIES", "false").lower() == "true"
-        self.session_secret = os.environ.get("SESSION_SECRET", "")
-        if len(self.session_secret) < 32:
-            self.session_secret = secrets.token_hex(32)
+        self.session_secret = _safe_server_secret(os.environ.get("SESSION_SECRET", ""), min_len=32)
         self.sms_api_key = os.environ.get("SMS_GATEWAY_API_KEY", "")
-        self.razorpay_key_id = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_local_demo")
-        self.razorpay_key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "") or secrets.token_hex(24)
-        self.razorpay_webhook_secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "") or secrets.token_hex(24)
+        self.sms_provider = os.environ.get("SMS_PROVIDER", "").strip().lower()
+        self.msg91_sender_id = os.environ.get("MSG91_SENDER_ID", "RMPHSP").strip()
+        self.msg91_template_id = os.environ.get("MSG91_TEMPLATE_ID", "").strip()
+        self.razorpay_key_id = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_replace_me")
+        self.razorpay_key_secret = _safe_server_secret(os.environ.get("RAZORPAY_KEY_SECRET", ""), min_len=16)
+        self.razorpay_webhook_secret = _safe_server_secret(os.environ.get("RAZORPAY_WEBHOOK_SECRET", ""), min_len=16)
         origins_raw = os.environ.get("ALLOWED_ORIGINS", "http://127.0.0.1:8080,http://localhost:8080")
         self.allowed_origins = {o.strip() for o in origins_raw.split(",") if o.strip()}
         self.db_path = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "data", "hospital.db"))
@@ -263,16 +273,16 @@ class AppConfig:
         self.rate_limit_login = int(os.environ.get("RATE_LIMIT_LOGIN", "10"))
         self.rate_limit_notify = int(os.environ.get("RATE_LIMIT_NOTIFY", "30"))
         self.staff_passwords = {
-            "admin": os.environ.get("ADMIN_PASSWORD", "Admin#RMP2026!"),
-            "dr_rohan": os.environ.get("DR_ROHAN_PASSWORD", "Rohan#Ortho2026!"),
-            "dr_rahul": os.environ.get("DR_RAHUL_PASSWORD", "Rahul#Obgy2026!"),
-            "dr_manjusha": os.environ.get("DR_MANJUSHA_PASSWORD", "Manjusha#Dent2026!"),
-            "dr_snehal": os.environ.get("DR_SNEHAL_PASSWORD", "Snehal#Med2026!"),
-            "reception": os.environ.get("RECEPTION_PASSWORD", "Desk#RMP2026!"),
-            "nurse": os.environ.get("NURSE_PASSWORD", "Nurse#RMP2026!"),
-            "pharmacist": os.environ.get("PHARMACIST_PASSWORD", "Pharm#RMP2026!"),
-            "lab_tech": os.environ.get("LAB_TECH_PASSWORD", "Lab#RMP2026!"),
-            "billing_desk": os.environ.get("BILLING_PASSWORD", "Bill#RMP2026!"),
+            "admin": os.environ.get("ADMIN_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_rohan": os.environ.get("DR_ROHAN_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_rahul": os.environ.get("DR_RAHUL_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_manjusha": os.environ.get("DR_MANJUSHA_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "dr_snehal": os.environ.get("DR_SNEHAL_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "reception": os.environ.get("RECEPTION_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "nurse": os.environ.get("NURSE_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "pharmacist": os.environ.get("PHARMACIST_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "lab_tech": os.environ.get("LAB_TECH_PASSWORD", "").strip() or secrets.token_urlsafe(20),
+            "billing_desk": os.environ.get("BILLING_PASSWORD", "").strip() or secrets.token_urlsafe(20),
         }
 
 
@@ -425,15 +435,100 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return real_ip
         return peer
 
+    def _has_real_sms_key(self) -> bool:
+        return bool(self.cfg.sms_api_key and not self.cfg.sms_api_key.startswith("replace_with_"))
+
+    def _has_real_razorpay(self) -> bool:
+        kid = self.cfg.razorpay_key_id
+        sec = self.cfg.razorpay_key_secret
+        return bool(
+            kid.startswith("rzp_")
+            and not kid.startswith("rzp_test_replace")
+            and not kid.startswith("rzp_test_local")
+            and sec
+            and not sec.startswith("replace_with_")
+        )
+
+    def _create_razorpay_order(self, amount_inr: int, receipt_ref: str) -> Optional[str]:
+        """Create a real Razorpay Order server-side when real test/live keys are configured."""
+        if not self._has_real_razorpay():
+            return None
+        auth_b64 = base64.b64encode(
+            f"{self.cfg.razorpay_key_id}:{self.cfg.razorpay_key_secret}".encode("utf-8")
+        ).decode("ascii")
+        payload = json.dumps({
+            "amount": amount_inr * 100,
+            "currency": "INR",
+            "receipt": receipt_ref[:40],
+        }).encode("utf-8")
+        req = urllib_request.Request(
+            "https://api.razorpay.com/v1/orders",
+            data=payload,
+            headers={
+                "Authorization": f"Basic {auth_b64}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib_request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                order_id = str(data.get("id", "")).strip()
+                return order_id if order_id.startswith("order_") else None
+        except Exception:
+            return None
+
     def _dispatch_sms(self, mobile: str, text: str) -> str:
         """
         Server-side SMS dispatcher using hidden SMS_GATEWAY_API_KEY env var.
-        Never exposes the API key to the browser; gracefully degrades if no live gateway key is set.
+        Supports Fast2SMS (SMS_PROVIDER=fast2sms) and MSG91 (SMS_PROVIDER=msg91) over HTTPS;
+        never exposes keys to browser JS and gracefully falls back when unconfigured.
         """
-        if self.cfg.sms_api_key and not self.cfg.sms_api_key.startswith("replace_with_"):
-            # Production hook: integrate Twilio/MSG91/Fast2SMS HTTPS API here using self.cfg.sms_api_key
-            return "sent"
-        return "queued_local"
+        if not self._has_real_sms_key():
+            return "queued_local"
+        if self.cfg.sms_provider == "fast2sms":
+            payload = json.dumps({
+                "route": "q",
+                "message": text,
+                "language": "english",
+                "flash": 0,
+                "numbers": mobile,
+            }).encode("utf-8")
+            req = urllib_request.Request(
+                "https://www.fast2sms.com/dev/bulkV2",
+                data=payload,
+                headers={
+                    "authorization": self.cfg.sms_api_key,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with urllib_request.urlopen(req, timeout=4) as resp:
+                    return "sent" if 200 <= resp.status < 300 else "gateway_error"
+            except (urllib_error.URLError, TimeoutError, ValueError):
+                return "gateway_error"
+        if self.cfg.sms_provider == "msg91" and self.cfg.msg91_template_id:
+            payload = json.dumps({
+                "template_id": self.cfg.msg91_template_id,
+                "short_url": "0",
+                "recipients": [{"mobiles": f"91{mobile}", "message": text}],
+            }).encode("utf-8")
+            req = urllib_request.Request(
+                "https://control.msg91.com/api/v5/flow/",
+                data=payload,
+                headers={
+                    "authkey": self.cfg.sms_api_key,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with urllib_request.urlopen(req, timeout=4) as resp:
+                    return "sent" if 200 <= resp.status < 300 else "gateway_error"
+            except (urllib_error.URLError, TimeoutError, ValueError):
+                return "gateway_error"
+        return "sent"
 
     def _apply_security_headers(self, is_api: bool = False) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -448,8 +543,11 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-                "style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'",
+                "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://checkout.razorpay.com; "
+                "style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.razorpay.com; "
+                "frame-src https://api.razorpay.com https://checkout.razorpay.com; "
+                "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; "
+                "frame-ancestors 'none'; base-uri 'self'",
             )
         origin = self.headers.get("Origin")
         if origin and origin in self.cfg.allowed_origins:
@@ -556,7 +654,8 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                     "timezone": "Asia/Kolkata",
                     "server_time_ist": ist_now_iso(),
                     "debug": False,
-                    "sms_gateway_configured": bool(self.cfg.sms_api_key),
+                    "sms_gateway_configured": self._has_real_sms_key(),
+                    "razorpay_configured": self._has_real_razorpay(),
                 },
             )
             return
@@ -566,6 +665,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 405,
                 {"error": "Method not allowed. Use POST /api/appointments/check with JSON body."},
                 extra_headers={"Allow": "POST"},
+            )
+            return
+
+        if path == "/api/payments/config":
+            has_rzp = self._has_real_razorpay()
+            self._send_json(
+                200,
+                {
+                    "razorpay_configured": has_rzp,
+                    "key_id": self.cfg.razorpay_key_id if has_rzp else None,
+                    "mode": "test" if self.cfg.razorpay_key_id.startswith("rzp_test_") else ("live" if has_rzp else "placeholder"),
+                },
             )
             return
 
@@ -630,7 +741,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(401, {"error": "Authentication required"})
                 return
             role = session.get("role")
-            if role not in ("admin", "receptionist", "doctor"):
+            if role not in ("admin", "receptionist", "doctor", "billing"):
                 self._send_json(403, {"error": "Forbidden"})
                 return
             today = ist_today()
@@ -653,7 +764,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(401, {"error": "Authentication required"})
                 return
             role = session.get("role")
-            if role not in ("admin", "receptionist", "doctor"):
+            if role not in ("admin", "receptionist", "doctor", "billing"):
                 self._send_json(403, {"error": "Forbidden"})
                 return
             date_filter = None
@@ -684,7 +795,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(401, {"error": "Authentication required"})
                 return
             role = session.get("role")
-            if role not in ("admin", "receptionist", "doctor"):
+            if role not in ("admin", "receptionist", "doctor", "billing"):
                 self._send_json(403, {"error": "Forbidden"})
                 return
             doctor_scope = session["username"] if role == "doctor" else None
@@ -795,7 +906,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, self.db.list_nurse_roster_and_alerts())
             return
 
-        # Separate Shiv Medical Stores Billing History (Pharmacist & Admin ONLY — separate from hospital billing_desk!)
+        # Separate Shiv Medical Stores Financial Reports, Purchases & Bills (Pharmacist & Admin ONLY — separate from hospital billing_desk!)
         if path == "/api/pharmacy/reports":
             session = self._get_session()
             if not session:
@@ -805,6 +916,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
                 return
             self._send_json(200, {"report": self.db.get_pharmacy_financial_report()})
+            return
+
+        if path == "/api/pharmacy/purchases":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("pharmacist", "admin"):
+                self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
+                return
+            purchases = self.db.list_pharmacy_purchases(50)
+            self._send_json(200, {"store_name": "Shiv Medical Stores", "purchases": purchases, "count": len(purchases)})
             return
 
         if path == "/api/pharmacy/bills":
@@ -841,6 +964,46 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(403, {"error": "Pharmacist or Admin access required"})
                 return
             self._send_json(200, self.db.list_pharmacy_inventory())
+            return
+
+        if path == "/api/lab/tests":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            role = session.get("role")
+            if role not in ("doctor", "lab_tech", "admin"):
+                self._send_json(403, {"error": "Doctor, Lab Tech, or Admin access required"})
+                return
+            doc_scope = session["username"] if role == "doctor" else None
+            rows = self.db.list_lab_tests(doctor_username=doc_scope)
+            self._send_json(200, {"lab_tests": rows, "count": len(rows)})
+            return
+
+        if path == "/api/billing/invoices":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            if session.get("role") not in ("billing", "receptionist", "admin"):
+                self._send_json(403, {"error": "Billing, Receptionist, or Admin access required"})
+                return
+            rows = self.db.list_invoices()
+            self._send_json(200, {"invoices": rows, "count": len(rows)})
+            return
+
+        if path == "/api/staff/holidays":
+            session = self._get_session()
+            if not session:
+                self._send_json(401, {"error": "Authentication required"})
+                return
+            role = session.get("role")
+            if role not in ("doctor", "receptionist", "admin"):
+                self._send_json(403, {"error": "Staff access required"})
+                return
+            doc_scope = session["username"] if role == "doctor" else None
+            rows = self.db.list_doctor_holidays(doctor_username=doc_scope)
+            self._send_json(200, {"holidays": rows, "count": len(rows)})
             return
 
         # Printable Official Letterhead Receipt (Admin, Receptionist, or Owning Patient ONLY)
@@ -1098,7 +1261,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             raw_first = str(body.get("first_name", "")).strip()
             raw_last = str(body.get("last_name", "")).strip()
-            raw_mobile = re.sub(r"[\s-]", "", str(body.get("mobile", "")).strip())
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
             raw_pass = str(body.get("password", ""))
             if not NAME_RE.match(raw_first) or not NAME_RE.match(raw_last):
                 self._send_json(400, {"error": "Please enter valid first and last names (letters only, 2-60 chars)."})
@@ -1321,11 +1484,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             if payment_method not in ("pay_at_hospital", "online_razorpay"):
                 self._send_json(400, {"error": "Invalid payment_method (choose pay_at_hospital or online_razorpay)."})
                 return
+            fee_inr = self.db.get_doctor_fee_inr(doctor_username)
+            rzp_order_id = (
+                self._create_razorpay_order(fee_inr, record["appointment_number"])
+                if payment_method == "online_razorpay"
+                else None
+            )
             payment_rec = self.db.create_payment_record(
                 appointment_id=int(record["id"]),
                 appointment_number=record["appointment_number"],
                 doctor_username=doctor_username,
                 method=payment_method,
+                provider_order_id=rzp_order_id,
             )
 
             # Automatic Confirmation Text Message (SMS) with Appointment Number
@@ -1850,7 +2020,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"message": "Recovery email and phone saved"})
             return
 
-        # Forgot Password (Rate-limited; verifies registered Gmail or phone; never leaks account existence)
+        # Forgot Password (Rate-limited; verifies registered Gmail or phone; never leaks account existence or OTP)
         if path == "/api/auth/forgot-password":
             if not self._check_rate_limit("login", self.cfg.rate_limit_login, 60.0):
                 return
@@ -1866,7 +2036,8 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             code = self.db.create_password_reset_code(username, email=email, phone=phone)
             if code:
-                # Production hook: dispatch OTP via configured SMS/Email provider; never expose in production JSON
+                if phone:
+                    self._dispatch_sms(phone, f"Shri R.M. Patil Hospital password reset OTP: {code} (valid 10 min).")
                 self.db.log_audit(username, "PASSWORD_RESET_REQUESTED", self._client_ip(), 200)
             self._send_json(200, {"message": "If the username and recovery email/phone match, a 6-digit reset code has been dispatched."})
             return
@@ -1930,6 +2101,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(201, {"message": "Nurse ward notification posted", "notification": rec})
             return
 
+        # Separate Shiv Medical Stores Purchases (Pharmacist & Admin ONLY — isolated from hospital billing_desk!)
         if path == "/api/pharmacy/purchases":
             session = self._get_session()
             if not session:
@@ -1940,6 +2112,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(403, {"error": "Invalid CSRF token"})
                 return
             if session.get("role") not in ("pharmacist", "admin"):
+                self.db.log_audit(session["username"], "UNAUTHORIZED_PHARMACY_PURCHASE", self._client_ip(), 403)
                 self._send_json(403, {"error": "Shiv Medical Stores Pharmacist or Admin access required"})
                 return
             body, err = self._read_json_body()
@@ -1951,7 +2124,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             try:
                 qty = int(body.get("quantity", 0))
                 unit_cost = int(body.get("unit_cost_inr", 0))
-            except ValueError:
+            except (ValueError, TypeError):
                 qty, unit_cost = 0, -1
             if not med_code or not supplier or qty <= 0 or unit_cost < 0:
                 self._send_json(400, {"error": "Valid medicine_code, supplier_name, quantity, and unit_cost_inr required."})
@@ -2020,7 +2193,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             category = sanitize_text(str(body.get("category", "Pathology")), 60)
             try:
                 price = int(body.get("default_price_inr", 0))
-            except ValueError:
+            except (ValueError, TypeError):
                 price = -1
             if not cat_code or not test_name or price < 0 or price > 100000:
                 self._send_json(400, {"error": "Valid catalog_code, test_name, and default_price_inr (0-100000) required."})
@@ -2283,6 +2456,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "public, max-age=300, must-revalidate")
         self.end_headers()
         self.wfile.write(data)
+
 
 def create_server(config: Optional[AppConfig] = None) -> HospitalServer:
     cfg = config or AppConfig()

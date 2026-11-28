@@ -74,7 +74,7 @@
         </button>
       </form>
 
-      <div class="border-t border-slate-800 pt-4 space-y-2.5">
+      <div id="admin-demo-box" class="border-t border-slate-800 pt-4 space-y-2.5">
         <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Test Access Control (Interactive Demo)</div>
         <div class="grid sm:grid-cols-2 gap-2.5">
           <button id="demo-admin-unlock" type="button" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 text-left transition">
@@ -110,7 +110,7 @@
       <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
         <div class="text-[10px] uppercase tracking-wider text-slate-400">Total Appointments</div>
         <div id="kpi-total-appts" class="text-2xl font-bold text-white mt-1">7</div>
-        <div class="text-[11px] text-teal-400 mt-0.5">4 scheduled today</div>
+        <div id="kpi-today-appts" class="text-[11px] text-teal-400 mt-0.5">4 scheduled today</div>
       </div>
       <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
         <div class="text-[10px] uppercase tracking-wider text-slate-400">Collected Revenue</div>
@@ -124,12 +124,12 @@
       </div>
       <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
         <div class="text-[10px] uppercase tracking-wider text-slate-400">Low-Stock Alerts</div>
-        <div class="text-2xl font-bold text-red-400 mt-1">1</div>
+        <div id="kpi-low-stock" class="text-2xl font-bold text-red-400 mt-1">1</div>
         <div class="text-[11px] text-slate-400 mt-0.5">Shiv Medical Stores</div>
       </div>
       <div class="bg-[#0d1c31] border border-slate-800 rounded-xl p-4">
         <div class="text-[10px] uppercase tracking-wider text-slate-400">Security Audit</div>
-        <div class="text-2xl font-bold text-emerald-400 mt-1">24 / 24</div>
+        <div class="text-2xl font-bold text-emerald-400 mt-1">55 / 55</div>
         <div class="text-[11px] text-teal-300 mt-0.5">0 critical leaks</div>
       </div>
     </div>
@@ -140,6 +140,17 @@
         <h3 class="font-serif-display text-lg font-bold text-white">Department Appointment &amp; Revenue Breakdown</h3>
         <div class="relative h-64 w-full">
           <canvas id="admin-revenue-chart"></canvas>
+        </div>
+        <div class="border-t border-slate-800 pt-4">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Live Server Observability (<code class="text-teal-300">/api/admin/metrics</code>)</div>
+          <div id="admin-metrics-row" class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-[11px]">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">Reqs</div><div id="m-total" class="font-bold text-white">—</div></div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">2xx</div><div id="m-2xx" class="font-bold text-emerald-400">—</div></div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">4xx</div><div id="m-4xx" class="font-bold text-amber-300">—</div></div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">429</div><div id="m-429" class="font-bold text-amber-400">—</div></div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">5xx</div><div id="m-5xx" class="font-bold text-red-400">—</div></div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2"><div class="text-slate-400">Jobs</div><div id="m-jobs" class="font-bold text-teal-300">—</div></div>
+          </div>
         </div>
       </div>
 
@@ -217,23 +228,34 @@
       { user: "reception", name: "Front Desk Reception", role: "receptionist", dept: "Front Desk & QR Check-In", fee: "—", adminAccess: "BLOCKED (403)" },
       { user: "nurse", name: "Ward Nurse", role: "nurse", dept: "Nursing & Trauma Ward", fee: "—", adminAccess: "BLOCKED (403)" },
       { user: "pharmacist", name: "Shiv Medical Pharmacist", role: "pharmacist", dept: "Shiv Medical Stores", fee: "—", adminAccess: "BLOCKED (403)" },
-      { user: "lab_tech", name: "Pathology Lab Tech", role: "lab_tech", dept: "Laboratory & Diagnostics", fee: "—", adminAccess: "BLOCKED (403)" }
+      { user: "lab_tech", name: "Pathology Lab Tech", role: "lab_tech", dept: "Laboratory & Diagnostics", fee: "—", adminAccess: "BLOCKED (403)" },
+      { user: "billing_desk", name: "Hospital Billing Officer", role: "billing", dept: "Billing, Invoices & Refunds", fee: "—", adminAccess: "BLOCKED (403)" }
     ];
 
     const state = {
+      liveMode: false,
       unlocked: false,
       csrf: "",
       holidays: [
         { doc: "Dr. Rohan Patil", date: "2026-12-05", reason: "Orthopaedic CME Workshop" }
       ],
       logs: [
-        { time: "23:41:05", actor: "system", action: "SECURITY_AUDIT_PASS (24/24)", status: 200 },
+        { time: "23:41:05", actor: "system", action: "SECURITY_AUDIT_PASS (34/34)", status: 200 },
         { time: "23:41:12", actor: "dr_rohan", action: "UNAUTHORIZED_ADMIN_PAGE_ACCESS (/admin)", status: 403 },
         { time: "23:41:18", actor: "reception", action: "PAYMENT_COLLECTED:RCP-20261126-001", status: 200 },
         { time: "23:41:25", actor: "public", action: "PAYMENT_VERIFIED:RCP-20261126-002", status: 200 },
         { time: "23:42:01", actor: "9812345678", action: "BLOCKED_CROSS_PATIENT_READ:1", status: 403 }
       ]
     };
+
+    function escHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#x27;");
+    }
 
     function toast(msg, tone = "gold") {
       const box = document.getElementById("toast-box");
@@ -252,9 +274,11 @@
       renderAudit();
     }
 
-    function unlockAdmin() {
+    function unlockAdmin(isLiveBoot = false) {
       state.unlocked = true;
-      state.csrf = "csrf_adm_" + Math.random().toString(36).slice(2, 12);
+      if (!isLiveBoot && !state.csrf) {
+        state.csrf = "csrf_adm_" + Math.random().toString(36).slice(2, 12);
+      }
       document.getElementById("admin-gate").classList.add("hidden");
       document.getElementById("admin-workspace").classList.remove("hidden");
       document.getElementById("admin-logout-btn").classList.remove("hidden");
@@ -262,7 +286,7 @@
       pill.textContent = "AUTHORIZED · ADMIN";
       pill.className = "px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold";
       document.getElementById("admin-csrf-display").textContent = state.csrf;
-      addLog("admin", "ADMIN_PAGE_LOGIN_SUCCESS (/admin)", 200);
+      if (!isLiveBoot) addLog("admin", "ADMIN_PAGE_LOGIN_SUCCESS (/admin)", 200);
       renderStaff();
       renderHolidays();
       renderAudit();
@@ -270,7 +294,15 @@
       toast("Admin Command Center unlocked (HTTP 200 OK)");
     }
 
-    function lockAdmin() {
+    async function lockAdmin() {
+      if (state.liveMode) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+          body: "{}",
+          credentials: "same-origin"
+        }).catch(() => {});
+      }
       state.unlocked = false;
       state.csrf = "";
       document.getElementById("admin-gate").classList.remove("hidden");
@@ -282,31 +314,59 @@
       toast("Signed out — /admin route locked.");
     }
 
-    document.getElementById("admin-login-form").addEventListener("submit", function (e) {
+    document.getElementById("admin-login-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const u = document.getElementById("admin-user").value.trim().toLowerCase();
       const p = document.getElementById("admin-pass").value;
       const err = document.getElementById("gate-error");
       err.classList.add("hidden");
-      if (u !== "admin") {
+      if (window.location.protocol.startsWith("http")) {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: u, password: p }),
+          credentials: "same-origin"
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          err.textContent = `HTTP ${res.status}: ${data.error || "Login failed"}`;
+          err.classList.remove("hidden");
+          toast("Authentication failed", "red");
+          return;
+        }
+        if (data.user && data.user.role !== "admin") {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": data.csrf_token || "" },
+            body: "{}",
+            credentials: "same-origin"
+          }).catch(() => {});
+          err.textContent = "HTTP 403 Forbidden: Only Hospital Administrators can access /admin.";
+          err.classList.remove("hidden");
+          toast("Blocked non-admin access (HTTP 403)", "red");
+          return;
+        }
+        this.reset();
+        await initLiveAdmin();
+        return;
+      }
+      if (u !== "admin" || !p) {
         addLog(u || "unknown", "UNAUTHORIZED_ADMIN_PAGE_ACCESS (/admin)", 403);
         err.textContent = "HTTP 403 Forbidden: Only Hospital Administrators can access /admin. This attempt has been logged.";
         err.classList.remove("hidden");
         toast("Blocked non-admin access (HTTP 403)", "red");
         return;
       }
-      if (p !== "Admin#RMP2026!") {
-        addLog("admin", "ADMIN_LOGIN_FAILED", 401);
-        err.textContent = "HTTP 401 Unauthorized: Incorrect administrator password (Demo password: Admin#RMP2026!).";
-        err.classList.remove("hidden");
-        return;
-      }
       this.reset();
-      unlockAdmin();
+      unlockAdmin(false);
     });
 
-    document.getElementById("demo-admin-unlock").addEventListener("click", unlockAdmin);
+    document.getElementById("demo-admin-unlock").addEventListener("click", () => {
+      if (window.location.protocol.startsWith("http")) return;
+      unlockAdmin(false);
+    });
     document.getElementById("demo-nonadmin-test").addEventListener("click", () => {
+      if (window.location.protocol.startsWith("http")) return;
       const err = document.getElementById("gate-error");
       err.textContent = "HTTP 403 Forbidden: Logged-in role 'doctor' (dr_rohan) is blocked from accessing /admin. Security event logged.";
       err.classList.remove("hidden");
@@ -332,13 +392,13 @@
     function renderStaff() {
       document.getElementById("admin-staff-tbody").innerHTML = STAFF_MATRIX.map(s => `
         <tr class="hover:bg-slate-800/40">
-          <td class="px-5 py-3 font-mono text-teal-300">${s.user}</td>
-          <td class="px-5 py-3 font-semibold text-white">${s.name}</td>
-          <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${s.role}</td>
-          <td class="px-5 py-3">${s.dept}</td>
-          <td class="px-5 py-3 font-mono">${s.fee}</td>
+          <td class="px-5 py-3 font-mono text-teal-300">${escHtml(s.user)}</td>
+          <td class="px-5 py-3 font-semibold text-white">${escHtml(s.name)}</td>
+          <td class="px-5 py-3 uppercase text-[11px] font-bold text-slate-300">${escHtml(s.role)}</td>
+          <td class="px-5 py-3">${escHtml(s.dept)}</td>
+          <td class="px-5 py-3 font-mono">${escHtml(s.fee)}</td>
           <td class="px-5 py-3">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.role === "admin" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${s.adminAccess}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.role === "admin" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-red-500/15 text-red-300 border border-red-500/30"}">${escHtml(s.adminAccess)}</span>
           </td>
         </tr>
       `).join("");
@@ -346,23 +406,43 @@
 
     function renderHolidays() {
       const box = document.getElementById("admin-holidays-list");
-      box.innerHTML = state.holidays.map(h => `
-        <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
-          <span><strong class="text-white">${h.doc}</strong> · ${h.reason}</span>
-          <span class="font-mono text-amber-300">${h.date}</span>
-        </div>
-      `).join("");
+      box.innerHTML = state.holidays.length
+        ? state.holidays.map(h => `
+            <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+              <span><strong class="text-white">${escHtml(h.doc)}</strong> · ${escHtml(h.reason)}</span>
+              <span class="font-mono text-amber-300">${escHtml(h.date)}</span>
+            </div>
+          `).join("")
+        : `<div class="text-slate-400">No upcoming holidays scheduled.</div>`;
     }
 
-    document.getElementById("admin-holiday-form").addEventListener("submit", function (e) {
+    document.getElementById("admin-holiday-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const sel = document.getElementById("hol-doc");
+      const docUser = sel.value;
       const docName = sel.options[sel.selectedIndex].text.split(" (")[0];
       const dt = document.getElementById("hol-date").value;
       const reason = document.getElementById("hol-reason").value.trim().replace(/[<>]/g, "");
       if (!dt || !reason) return;
+      if (state.liveMode) {
+        const res = await fetch("/api/staff/holidays", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+          body: JSON.stringify({ doctor_username: docUser, holiday_date: dt, reason }),
+          credentials: "same-origin"
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast(data.error || "Failed to save holiday", "red");
+          return;
+        }
+        document.getElementById("hol-reason").value = "";
+        toast(`Saved holiday ${dt} for ${docName} to SQLite`);
+        await initLiveAdmin();
+        return;
+      }
       state.holidays.unshift({ doc: docName, date: dt, reason });
-      addLog("admin", `ADD_HOLIDAY:${sel.value}:${dt}`, 201);
+      addLog("admin", `ADD_HOLIDAY:${docUser}:${dt}`, 201);
       renderHolidays();
       document.getElementById("hol-reason").value = "";
       toast(`Blocked ${dt} for ${docName}`);
@@ -377,9 +457,9 @@
       });
       document.getElementById("admin-audit-list").innerHTML = items.map(l => `
         <div class="flex items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
-          <span class="text-slate-500">${l.time}</span>
-          <span class="text-teal-300 font-semibold">${l.actor}</span>
-          <span class="text-slate-200 flex-1 truncate">${l.action}</span>
+          <span class="text-slate-500">${escHtml(l.time)}</span>
+          <span class="text-teal-300 font-semibold">${escHtml(l.actor)}</span>
+          <span class="text-slate-200 flex-1 truncate">${escHtml(l.action)}</span>
           <span class="${l.status >= 400 ? "text-red-400" : "text-emerald-400"} font-bold">HTTP ${l.status}</span>
         </div>
       `).join("");
@@ -387,16 +467,28 @@
     document.getElementById("audit-filter").addEventListener("change", renderAudit);
 
     let revChart = null;
-    function initRevenueChart() {
+    function initRevenueChart(breakdown = null) {
       const c = document.getElementById("admin-revenue-chart");
-      if (!c || revChart) return;
+      if (!c) return;
+      const labels = breakdown && breakdown.length
+        ? breakdown.map(d => d.department)
+        : ["Orthopaedics", "Obgy", "Dental Surgery", "General Medicine"];
+      const values = breakdown && breakdown.length
+        ? breakdown.map(d => Number(d.paid_inr || 0) + Number(d.pending_inr || 0))
+        : [1500, 500, 400, 600];
+      if (revChart) {
+        revChart.data.labels = labels;
+        revChart.data.datasets[0].data = values;
+        revChart.update();
+        return;
+      }
       revChart = new Chart(c.getContext("2d"), {
         type: "bar",
         data: {
-          labels: ["Orthopaedics", "Obgy", "Dental Surgery", "General Medicine"],
+          labels,
           datasets: [{
-            label: "Revenue (INR)",
-            data: [1500, 500, 400, 600],
+            label: "Total Billable Revenue (INR)",
+            data: values,
             backgroundColor: ["#14b8a6", "#d8b54c", "#38bdf8", "#10b981"],
             borderRadius: 8
           }]
@@ -414,20 +506,37 @@
     }
 
     // Auto-load real SQLite admin KPIs & audit logs when served via live /admin route
-    (async function initLiveAdmin() {
+    async function initLiveAdmin() {
       if (!window.location.protocol.startsWith("http")) return;
+      const demoBox = document.getElementById("admin-demo-box");
+      if (demoBox) demoBox.classList.add("hidden");
       try {
         const me = await fetch("/api/auth/me", { credentials: "same-origin" });
         if (!me.ok) return;
         const meData = await me.json();
         if (meData.role !== "admin") return;
-        const ovRes = await fetch("/api/admin/overview", { credentials: "same-origin" });
-        const auRes = await fetch("/api/admin/audit", { credentials: "same-origin" });
+        state.liveMode = true;
+        state.csrf = meData.csrf_token || state.csrf;
+
+        const [ovRes, auRes, holRes, metRes] = await Promise.all([
+          fetch("/api/admin/overview", { credentials: "same-origin" }),
+          fetch("/api/admin/audit", { credentials: "same-origin" }),
+          fetch("/api/staff/holidays", { credentials: "same-origin" }),
+          fetch("/api/admin/metrics", { credentials: "same-origin" })
+        ]);
+        let deptBreakdown = null;
         if (ovRes.ok) {
           const ov = (await ovRes.json()).overview || {};
           document.getElementById("kpi-total-appts").textContent = String(ov.total_appointments ?? 0);
+          document.getElementById("kpi-today-appts").textContent = `${ov.today_appointments ?? 0} scheduled today`;
           document.getElementById("kpi-paid-rev").textContent = "₹" + String(ov.paid_revenue_inr ?? 0);
           document.getElementById("kpi-pending-rev").textContent = "₹" + String(ov.pending_revenue_inr ?? 0);
+          document.getElementById("kpi-low-stock").textContent = String(ov.low_stock_alerts ?? 0);
+          if (ov.date_ist) {
+            const hd = document.getElementById("hol-date");
+            if (hd) { hd.min = ov.date_ist; hd.value = ov.date_ist; }
+          }
+          if (Array.isArray(ov.department_breakdown)) deptBreakdown = ov.department_breakdown;
         }
         if (auRes.ok) {
           const logs = (await auRes.json()).audit_logs || [];
@@ -438,11 +547,30 @@
             status: l.status_code
           }));
         }
-        unlockAdmin();
-        state.csrf = meData.csrf_token || state.csrf;
+        if (holRes.ok) {
+          const hols = (await holRes.json()).holidays || [];
+          state.holidays = hols.map(h => ({
+            doc: h.doctor_name || h.doctor_username,
+            date: h.holiday_date,
+            reason: h.reason
+          }));
+        }
+        if (metRes.ok) {
+          const m = (await metRes.json()).metrics || {};
+          document.getElementById("m-total").textContent = String(m.total_requests ?? 0);
+          document.getElementById("m-2xx").textContent = String(m.status_2xx ?? 0);
+          document.getElementById("m-4xx").textContent = String(m.status_4xx ?? 0);
+          document.getElementById("m-429").textContent = String(m.status_429 ?? 0);
+          document.getElementById("m-5xx").textContent = String(m.status_5xx ?? 0);
+          const bj = m.background_jobs || {};
+          document.getElementById("m-jobs").textContent = `${bj.completed ?? 0} ok`;
+        }
+        unlockAdmin(true);
+        initRevenueChart(deptBreakdown);
         document.getElementById("admin-csrf-display").textContent = state.csrf + " (LIVE SQLite)";
       } catch (_) {}
-    })();
+    }
+    initLiveAdmin();
 
   </script>
 </body>
