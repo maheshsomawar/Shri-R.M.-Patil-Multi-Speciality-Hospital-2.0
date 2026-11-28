@@ -51,10 +51,28 @@ DEPARTMENT_TO_DOCTOR = {
 }
 
 ALLOWED_STATUSES = {"pending", "confirmed", "completed", "cancelled"}
-STATIC_ALLOWLIST = {"index.html", "admin.html"}
+STATIC_ALLOWLIST = {"index.html", "admin.html", "staff.html"}
+ASSET_ALLOWLIST = {
+    "site.v1.css": ("text/css; charset=utf-8", True),
+    "site.v1.js": ("application/javascript; charset=utf-8", True),
+    "hospital-atrium-480.webp": ("image/webp", False),
+    "hospital-atrium-800.webp": ("image/webp", False),
+    "hospital-atrium-1200.webp": ("image/webp", False),
+    "hospital-atrium-800.jpg": ("image/jpeg", False),
+}
 
 NAME_RE = re.compile(r"^[A-Za-z\s.'-]{2,60}$")
 MOBILE_RE = re.compile(r"^[6-9]\d{9}$")
+
+
+def normalize_indian_mobile(raw: str) -> str:
+    """Normalize Indian mobile numbers (+91 / 91 / leading 0 / spaces / dashes) to 10 digits."""
+    digits = re.sub(r"[\s\-()+]", "", str(raw or "").strip())
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    return digits
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 TIME_RE = re.compile(r"^\d{2}:\d{2}$")
@@ -237,6 +255,7 @@ class AppConfig:
         self.host = os.environ.get("HOST", "127.0.0.1")
         self.port = int(os.environ.get("PORT", "8080"))
         self.debug = os.environ.get("DEBUG", "false").lower() == "true"
+        self.trust_proxy = os.environ.get("TRUST_PROXY", "false").lower() == "true"
         self.secure_cookies = os.environ.get("SECURE_COOKIES", "false").lower() == "true"
         self.session_secret = _safe_server_secret(os.environ.get("SESSION_SECRET", ""), min_len=32)
         self.sms_api_key = os.environ.get("SMS_GATEWAY_API_KEY", "")
@@ -352,6 +371,7 @@ class HospitalServer(ThreadingHTTPServer):
         self.rate_limiter = SlidingWindowRateLimiter()
         self.metrics = MetricsCollector()
         self.public_cache = PublicTTLCache(ttl_sec=30.0)
+        self.idempotency_cache = PublicTTLCache(ttl_sec=600.0)
         max_workers = int(os.environ.get("MAX_WORKERS", "64"))
         self._pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
         self._login_lock = threading.Lock()
@@ -383,6 +403,10 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
     def version_string(self) -> str:
         return "HospitalWeb"
 
+    def send_error(self, code: int, message: Optional[str] = None, explain: Optional[str] = None) -> None:
+        safe_msg = "Request could not be processed" if code >= 500 else (message or "Bad request")
+        self._send_json(code, {"error": safe_msg})
+
     def log_message(self, format: str, *args: Any) -> None:
         if self.server.config.debug:  # type: ignore[attr-defined]
             super().log_message(format, *args)
@@ -404,7 +428,12 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         return self.server.rate_limiter  # type: ignore[attr-defined]
 
     def _client_ip(self) -> str:
-        return self.client_address[0] if self.client_address else "unknown"
+        peer = self.client_address[0] if self.client_address else "unknown"
+        if self.cfg.trust_proxy and peer in ("127.0.0.1", "::1"):
+            real_ip = (self.headers.get("X-Real-IP") or "").strip()
+            if real_ip and re.fullmatch(r"[0-9a-fA-F.:]{3,45}", real_ip):
+                return real_ip
+        return peer
 
     def _has_real_sms_key(self) -> bool:
         return bool(self.cfg.sms_api_key and not self.cfg.sms_api_key.startswith("replace_with_"))
@@ -509,7 +538,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
         if is_api:
             self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.send_header("Pragma", "no-cache")
         else:
             self.send_header(
@@ -628,6 +657,14 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                     "sms_gateway_configured": self._has_real_sms_key(),
                     "razorpay_configured": self._has_real_razorpay(),
                 },
+            )
+            return
+
+        if path == "/api/appointments/check":
+            self._send_json(
+                405,
+                {"error": "Method not allowed. Use POST /api/appointments/check with JSON body."},
+                extra_headers={"Allow": "POST"},
             )
             return
 
@@ -1011,7 +1048,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
             self._apply_security_headers(is_api=False)
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.end_headers()
             self.wfile.write(page)
             return
@@ -1062,7 +1099,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
             self._apply_security_headers(is_api=False)
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.end_headers()
             self.wfile.write(page)
             return
@@ -1125,7 +1162,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/robots.txt":
-            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n"
+            txt = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /staff\nDisallow: /api/\n"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(txt)))
@@ -1151,9 +1188,63 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(xml)
             return
 
+        if path in ("/staff", "/staff.html"):
+            self._serve_static("staff.html", no_store=True)
+            return
+
+        if path.startswith("/assets/"):
+            asset_name = path[len("/assets/"):]
+            if asset_name not in ASSET_ALLOWLIST:
+                self._send_json(404, {"error": "Not found"})
+                return
+            mime_type, compressible = ASSET_ALLOWLIST[asset_name]
+            assets_root = os.path.realpath(os.path.join(PUBLIC_DIR, "assets"))
+            target = os.path.realpath(os.path.join(assets_root, asset_name))
+            if not target.startswith(assets_root + os.sep) or not os.path.isfile(target):
+                self._send_json(404, {"error": "Not found"})
+                return
+            with open(target, "rb") as fh:
+                raw_data = fh.read()
+            etag = f'"{hashlib.sha256(raw_data).hexdigest()[:16]}"'
+            if self.headers.get("If-None-Match", "").strip() == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+                self._apply_security_headers(is_api=False)
+                self.end_headers()
+                return
+            use_gzip = compressible and "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(raw_data) > 512
+            payload_bytes = gzip.compress(raw_data, compresslevel=6) if use_gzip else raw_data
+            self.send_response(200)
+            self.send_header("Content-Type", mime_type)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            if use_gzip:
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Vary", "Accept-Encoding")
+            self.send_header("Content-Length", str(len(payload_bytes)))
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(payload_bytes)
+            return
+
         if path == "/" or path == "/index.html":
             self._serve_static("index.html")
             return
+
+        if not path.startswith("/api/") and "text/html" in self.headers.get("Accept", "").lower():
+            not_found_path = os.path.realpath(os.path.join(PUBLIC_DIR, "404.html"))
+            if os.path.isfile(not_found_path):
+                with open(not_found_path, "rb") as fh:
+                    nf_bytes = fh.read()
+                self.send_response(404)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(nf_bytes)))
+                self.send_header("Cache-Control", "no-store, private")
+                self._apply_security_headers(is_api=False)
+                self.end_headers()
+                self.wfile.write(nf_bytes)
+                return
 
         self._send_json(404, {"error": "Not found"})
 
@@ -1170,7 +1261,7 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return
             raw_first = str(body.get("first_name", "")).strip()
             raw_last = str(body.get("last_name", "")).strip()
-            raw_mobile = re.sub(r"[\s-]", "", str(body.get("mobile", "")).strip())
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
             raw_pass = str(body.get("password", ""))
             if not NAME_RE.match(raw_first) or not NAME_RE.match(raw_last):
                 self._send_json(400, {"error": "Please enter valid first and last names (letters only, 2-60 chars)."})
@@ -1286,17 +1377,57 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
-        if path == "/api/appointments":
-            if not self._check_rate_limit("booking", self.cfg.rate_limit_booking, 60.0):
+        if path == "/api/appointments/check":
+            if not self._check_rate_limit("appt_check", 15, 60.0):
                 return
             body, err = self._read_json_body()
             if err or body is None:
                 self._send_json(400, {"error": err or "Bad request"})
                 return
+            raw_appt_no = str(body.get("appointment_number", "")).strip().upper()
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
+            if not re.fullmatch(r"[A-Z0-9-]{3,32}", raw_appt_no):
+                self._send_json(400, {"error": "Please enter a valid Appointment Number (e.g. APT-20261128-001)."})
+                return
+            if not MOBILE_RE.match(raw_mobile):
+                self._send_json(400, {"error": "Please enter the exact 10-digit registered mobile number."})
+                return
+            target_bucket = f"appt_target:{hashlib.sha256(raw_appt_no.encode('utf-8')).hexdigest()[:16]}"
+            if not self._check_rate_limit(target_bucket, 12, 60.0):
+                return
+            found = self.db.lookup_appointment_status(raw_appt_no, raw_mobile)
+            if not found:
+                self.db.log_audit("public", "PUBLIC_APPT_CHECK:NOT_FOUND", self._client_ip(), 404)
+                self._send_json(
+                    404,
+                    {"error": "No appointment found matching that Appointment Number and Mobile Number."},
+                )
+                return
+            self.db.log_audit("public", f"PUBLIC_APPT_CHECK:FOUND:{found['appointment_number']}", self._client_ip(), 200)
+            self._send_json(200, {"found": True, "appointment": found})
+            return
+
+        if path == "/api/appointments":
+            body, err = self._read_json_body()
+            if err or body is None:
+                self._send_json(400, {"error": err or "Bad request"})
+                return
+
+            idem_raw = (self.headers.get("Idempotency-Key") or str(body.get("idempotency_key", ""))).strip()
+            idem_cache_key = ""
+            if idem_raw and re.fullmatch(r"[A-Za-z0-9._-]{8,80}", idem_raw):
+                idem_cache_key = f"book:{self._client_ip()}:{idem_raw}"
+                cached_booking = self.server.idempotency_cache.get(idem_cache_key)  # type: ignore[attr-defined]
+                if cached_booking is not None:
+                    self._send_json(200, cached_booking, extra_headers={"X-Idempotent-Replay": "true"})
+                    return
+
+            if not self._check_rate_limit("booking", self.cfg.rate_limit_booking, 60.0):
+                return
 
             raw_first = str(body.get("first_name", "")).strip()
             raw_last = str(body.get("last_name", "")).strip()
-            raw_mobile = re.sub(r"[\s-]", "", str(body.get("mobile", "")).strip())
+            raw_mobile = normalize_indian_mobile(str(body.get("mobile", "")))
             department = str(body.get("department", "")).strip()
             raw_msg = str(body.get("message", ""))
             raw_date = str(body.get("appointment_date", "")).strip() or ist_today()
@@ -1390,29 +1521,29 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 self._client_ip(),
                 201,
             )
-            self._send_json(
-                201,
-                {
-                    "message": "Appointment request received & confirmation SMS triggered",
-                    "appointment": {
-                        "id": record["id"],
-                        "appointment_number": record["appointment_number"],
-                        "reference_code": record["reference_code"],
-                        "appointment_date": record["appointment_date"],
-                        "slot_time": record["slot_time"],
-                        "department": record["department"],
-                        "status": record["status"],
-                        "qr_token": record["qr_token"],
-                        "message": record["message"],
-                    },
-                    "payment": payment_rec,
-                    "confirmation_sms": {
-                        "to": raw_mobile,
-                        "status": sms_record["delivery_status"],
-                        "text": sms_record["body"],
-                    },
+            booking_response = {
+                "message": "Appointment confirmed & confirmation SMS processed",
+                "appointment": {
+                    "id": record["id"],
+                    "appointment_number": record["appointment_number"],
+                    "reference_code": record["reference_code"],
+                    "appointment_date": record["appointment_date"],
+                    "slot_time": record["slot_time"],
+                    "department": record["department"],
+                    "status": record["status"],
+                    "qr_token": record["qr_token"],
+                    "message": record["message"],
                 },
-            )
+                "payment": payment_rec,
+                "confirmation_sms": {
+                    "to": raw_mobile,
+                    "status": sms_record["delivery_status"],
+                    "text": sms_record["body"],
+                },
+            }
+            if idem_cache_key:
+                self.server.idempotency_cache.set(idem_cache_key, booking_response)  # type: ignore[attr-defined]
+            self._send_json(201, booking_response)
             return
 
         # Doctor / Staff sends notification to a specific patient (strict ownership + CSRF + rate limit)
@@ -2296,10 +2427,19 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "Not found"})
             return
         with open(target, "rb") as fh:
-            data = fh.read()
-        use_gzip = "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(data) > 1024
-        if use_gzip:
-            data = gzip.compress(data, compresslevel=5)
+            raw_data = fh.read()
+
+        etag = f'"{hashlib.sha256(raw_data).hexdigest()[:16]}"'
+        if not no_store and self.headers.get("If-None-Match", "").strip() == etag:
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=300, must-revalidate")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            return
+
+        use_gzip = "gzip" in self.headers.get("Accept-Encoding", "").lower() and len(raw_data) > 1024
+        data = gzip.compress(raw_data, compresslevel=5) if use_gzip else raw_data
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         if use_gzip:
@@ -2308,8 +2448,12 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self._apply_security_headers(is_api=False)
         if no_store:
-            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, private")
             self.send_header("Pragma", "no-cache")
+            self.send_header("X-Robots-Tag", "noindex, nofollow")
+        else:
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=300, must-revalidate")
         self.end_headers()
         self.wfile.write(data)
 

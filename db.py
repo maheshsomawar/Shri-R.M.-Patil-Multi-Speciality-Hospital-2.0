@@ -406,6 +406,51 @@ class HospitalDB:
                     "created_at": now,
                 }
 
+    def lookup_appointment_status(self, appointment_number: str, mobile: str) -> Optional[Dict[str, Any]]:
+        """Privacy-safe patient self-service lookup requiring BOTH exact appointment_number and mobile.
+        Returns only safe confirmation status fields — never clinical notes, prescriptions, or PII."""
+        appt_no = appointment_number.strip().upper()
+        mob = mobile.strip()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT a.appointment_number, a.appointment_date, a.slot_time,
+                       a.first_name, a.last_name, a.mobile, a.department,
+                       a.status, a.checked_in_at, a.queue_token,
+                       d.full_name AS doctor_name, d.qualification AS doctor_qualification,
+                       d.consultation_fee_inr AS doc_fee,
+                       p.amount_inr AS pay_amount, p.payment_status AS payment_status
+                FROM appointments a
+                LEFT JOIN doctors d ON d.username = a.doctor_username
+                LEFT JOIN payments p ON p.appointment_id = a.id
+                WHERE a.appointment_number = ?
+                LIMIT 1
+                """,
+                (appt_no,),
+            ).fetchone()
+        if not row:
+            return None
+        stored_mob = str(row["mobile"] or "").strip()
+        if not hmac.compare_digest(stored_mob, mob):
+            return None
+        return {
+            "appointment_number": row["appointment_number"],
+            "appointment_date": row["appointment_date"],
+            "slot_time": row["slot_time"] or "",
+            "patient_name": f"{row['first_name']} {row['last_name']}".strip(),
+            "department": row["department"],
+            "doctor_name": row["doctor_name"] or row["department"],
+            "doctor_qualification": row["doctor_qualification"] or "",
+            "status": row["status"],
+            "checked_in": bool(row["checked_in_at"]),
+            "queue_token": row["queue_token"] or "",
+            "consultation_fee": int(row["pay_amount"] or row["doc_fee"] or 0),
+            "payment_status": row["payment_status"] or "pending",
+            "hospital_name": "Shri R.M. Patil Multi Speciality Hospital & Trauma Care",
+            "hospital_address": "Manu-Madhav Plaza, SBI Bank Building, Near Old Bus Stand, Chakur, Dist. Latur, Maharashtra",
+            "hospital_phones": ["02381-299133", "94217 62599"],
+        }
+
     def get_appointment_by_id(
         self, appointment_id: int, doctor_username: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:

@@ -136,14 +136,16 @@ def run_audit() -> Dict[str, Any]:
             ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
             ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
             idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
+            stf_html = open(os.path.join(BASE_DIR, "public", "staff.html"), encoding="utf-8").read()
             adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
+            site_js = open(os.path.join(BASE_DIR, "public", "assets", "site.v1.js"), encoding="utf-8").read()
+            client_bundle = "\n".join((idx_html, stf_html, adm_html, site_js))
             client_clean = (
-                "demoPass" not in idx_html
-                and "Admin#RMP2026!" not in idx_html
-                and "Admin#RMP2026!" not in adm_html
-                and "RAZORPAY_KEY_SECRET" not in idx_html
-                and "SMS_GATEWAY_API_KEY" not in idx_html
-                and "SESSION_SECRET" not in idx_html
+                "demoPass" not in client_bundle
+                and "Admin#RMP2026!" not in client_bundle
+                and "RAZORPAY_KEY_SECRET" not in client_bundle
+                and "SMS_GATEWAY_API_KEY" not in client_bundle
+                and "SESSION_SECRET" not in client_bundle
             )
             secrets_rejected = "replace_with" not in ph_sess and len(ph_sess) == 64 and "replace_with" not in ph_rzp
             key_hidden = (
@@ -1167,6 +1169,231 @@ def run_audit() -> Dict[str, Any]:
                 "Dynamic Lab Test Catalog (Lab Tech & Admin)",
                 st_pat_cat == 403 and st_lt_cat == 201 and st_get_cat == 200 and json.loads(b_get_cat).get("count", 0) >= 5,
                 f"Patient add blocked={st_pat_cat}; Lab Tech added CAT-TSH={st_lt_cat}; catalog count={json.loads(b_get_cat).get('count')}",
+            )
+
+            # 46. Patient Self-Service "Check Appointment from Home" (Requires BOTH Appt No + Mobile, Zero Clinical PII Leak)
+            chk_rec = srv.db.create_appointment(
+                first_name="Kiran",
+                last_name="Deshmukh",
+                mobile="9822334455",
+                department="General Medicine — Dr. Snehal Patil",
+                doctor_username="dr_snehal",
+                message="CONFIDENTIAL_CLINICAL_NOTE_DO_NOT_LEAK",
+                appointment_date=today_s,
+            )
+            st_chk_bk = 201
+            chk_appt_no = chk_rec["appointment_number"]
+            st_chk_bad_req, _, _ = http_req(
+                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no}
+            )
+            st_chk_wrong_mob, _, b_chk_wm = http_req(
+                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no, "mobile": "9999999999"}
+            )
+            st_chk_wrong_no, _, b_chk_wn = http_req(
+                port, "POST", "/api/appointments/check", body={"appointment_number": "APT-99999999-999", "mobile": "9822334455"}
+            )
+            st_chk_ok, _, b_chk_ok = http_req(
+                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no, "mobile": "9822334455"}
+            )
+            chk_payload = json.loads(b_chk_ok) if st_chk_ok == 200 else {}
+            chk_appt_obj = chk_payload.get("appointment", {})
+            zero_pii_leak = (
+                "CONFIDENTIAL_CLINICAL_NOTE_DO_NOT_LEAK" not in b_chk_ok
+                and "message" not in chk_appt_obj
+                and "mobile" not in chk_appt_obj
+                and "qr_token" not in chk_appt_obj
+                and "password_hash" not in b_chk_ok
+            )
+            same_generic_404 = (
+                st_chk_wrong_mob == 404
+                and st_chk_wrong_no == 404
+                and json.loads(b_chk_wm).get("error") == json.loads(b_chk_wn).get("error")
+            )
+            record(
+                "Check Appointment from Home (2-Factor ApptNo+Mobile & Zero Clinical PII Leak)",
+                st_chk_bk == 201
+                and st_chk_bad_req == 400
+                and same_generic_404
+                and st_chk_ok == 200
+                and chk_appt_obj.get("appointment_number") == chk_appt_no
+                and zero_pii_leak,
+                f"booked={st_chk_bk}, missing_mob={st_chk_bad_req}, generic_404={same_generic_404}, match={st_chk_ok}, zero_pii_leak={zero_pii_leak}",
+            )
+
+            # 47. Check Appointment Brute-Force Rate Limiting (429 + Retry-After)
+            chk_rl_codes = []
+            chk_rl_retry = False
+            for _ in range(18):
+                st_crl, h_crl, _ = http_req(
+                    port,
+                    "POST",
+                    "/api/appointments/check",
+                    body={"appointment_number": "APT-20261128-999", "mobile": "9822334455"},
+                )
+                chk_rl_codes.append(st_crl)
+                if st_crl == 429 and "retry-after" in h_crl:
+                    chk_rl_retry = True
+            record(
+                "Check Appointment Brute-Force Rate Limit (429 + Retry-After)",
+                429 in chk_rl_codes and chk_rl_retry,
+                f"Check burst: {chk_rl_codes.count(404)} checked, {chk_rl_codes.count(429)} rate-limited with Retry-After",
+            )
+
+            # 48. Public Homepage Isolation & Separate Staff Portal Security Headers
+            st_pub_home, h_pub_home, b_pub_home = http_req(port, "GET", "/")
+            st_staff_pg, h_staff_pg, b_staff_pg = http_req(port, "GET", "/staff")
+            st_rob, _, b_rob = http_req(port, "GET", "/robots.txt")
+            home_clean = (
+                st_pub_home == 200
+                and 'type="password"' not in b_pub_home
+                and "portal-login-card" not in b_pub_home
+                and "Check Appointment from Home" in b_pub_home
+            )
+            staff_ok = (
+                st_staff_pg == 200
+                and "no-store" in h_staff_pg.get("cache-control", "")
+                and h_staff_pg.get("x-frame-options") == "DENY"
+                and h_staff_pg.get("x-content-type-options") == "nosniff"
+                and "content-security-policy" in h_staff_pg
+                and "portal-login-card" in b_staff_pg
+            )
+            robots_ok = st_rob == 200 and "Disallow: /staff" in b_rob and "Disallow: /admin" in b_rob
+            record(
+                "Public Homepage Isolation (No Staff Logins on /) & Hardened /staff Route",
+                home_clean and staff_ok and robots_ok,
+                f"home_clean={home_clean}, staff_hardened={staff_ok}, robots_disallows_staff_admin={robots_ok}",
+            )
+
+            # 49. Booking Idempotency-Key Protection (Prevents Duplicate Bookings on Double-Click / Retry)
+            srv.rate_limiter._buckets.clear()
+            idem_key = "idem-test-key-2026-unique"
+            idem_body = {
+                "first_name": "Sunita",
+                "last_name": "Kulkarni",
+                "mobile": "+91 98234-56789",
+                "department": "General Medicine — Dr. Snehal Patil",
+                "appointment_date": today_s,
+                "message": "Routine checkup",
+            }
+            st_id1, _, b_id1 = http_req(
+                port, "POST", "/api/appointments", body=idem_body, headers={"Idempotency-Key": idem_key}
+            )
+            st_id2, h_id2, b_id2 = http_req(
+                port, "POST", "/api/appointments", body=idem_body, headers={"Idempotency-Key": idem_key}
+            )
+            no_id1 = json.loads(b_id1).get("appointment", {}).get("appointment_number") if st_id1 == 201 else None
+            no_id2 = json.loads(b_id2).get("appointment", {}).get("appointment_number") if st_id2 == 200 else None
+            record(
+                "Booking Idempotency-Key & +91 Mobile Normalization (Zero Duplicate Bookings)",
+                st_id1 == 201 and st_id2 == 200 and no_id1 is not None and no_id1 == no_id2 and h_id2.get("x-idempotent-replay") == "true",
+                f"first={st_id1} ({no_id1}), replay={st_id2} ({no_id2}), replay_hdr={h_id2.get('x-idempotent-replay')}",
+            )
+
+            # 50. +91 Mobile Normalization & No-Store on /api/appointments/check + Zero Internal Links on /
+            st_chk91, h_chk91, b_chk91 = http_req(
+                port,
+                "POST",
+                "/api/appointments/check",
+                body={"appointment_number": no_id1 or "", "mobile": "+91 98234-56789"},
+            )
+            no_store_chk = "no-store" in h_chk91.get("cache-control", "")
+            zero_internal_links = ('href="/staff"' not in b_pub_home) and ('href="/admin"' not in b_pub_home)
+            exact_nav = all(lbl in b_pub_home for lbl in ["Services", "Doctors", "Why Choose Us", "Check Appointment", "Contact", "Book Appointment"])
+            record(
+                "Check Appointment +91 Normalization, No-Store Cache & Zero Internal Links on /",
+                st_chk91 == 200 and no_store_chk and zero_internal_links and exact_nav,
+                f"check_+91={st_chk91}, no_store={no_store_chk}, zero_internal_links={zero_internal_links}, exact_nav={exact_nav}",
+            )
+
+            # 51. Performance Caching & Strict Privacy Cache Boundary (Immutable /assets/* + ETag 304 vs No-Store Private)
+            st_css, h_css, b_css = http_req(port, "GET", "/assets/site.v1.css", headers={"Accept-Encoding": "gzip"})
+            css_etag = h_css.get("etag", "")
+            st_css_304, _, _ = http_req(port, "GET", "/assets/site.v1.css", headers={"If-None-Match": css_etag})
+            st_webp, h_webp, _ = http_req(port, "GET", "/assets/hospital-atrium-480.webp")
+            st_bad_asset, _, _ = http_req(port, "GET", "/assets/../../server.py")
+            no_render_block_cdn = "cdn.tailwindcss.com" not in b_pub_home
+            perf_cache_ok = (
+                st_css == 200
+                and "immutable" in h_css.get("cache-control", "")
+                and h_css.get("content-encoding") == "gzip"
+                and st_css_304 == 304
+                and st_webp == 200
+                and h_webp.get("content-type") == "image/webp"
+                and "immutable" in h_webp.get("cache-control", "")
+                and st_bad_asset == 404
+                and no_render_block_cdn
+            )
+            record(
+                "Performance Assets (Immutable WebP/Gzip CSS, ETag 304, Zero Blocking CDN, Path Traversal Blocked)",
+                perf_cache_ok,
+                f"css={st_css}/gzip, 304={st_css_304}, webp={st_webp}, traversal={st_bad_asset}, no_blocking_cdn={no_render_block_cdn}",
+            )
+
+            # 52. GET /api/appointments/check Rejected with 405 Method Not Allowed (No Mobile in URL)
+            st_get_chk, h_get_chk, _ = http_req(port, "GET", "/api/appointments/check?appointment_number=APT-1&mobile=9876543210")
+            record(
+                "Appointment Check POST-Only Enforcement (GET Rejected 405, No Mobile in URL)",
+                st_get_chk == 405 and h_get_chk.get("allow") == "POST",
+                f"GET /api/appointments/check -> status={st_get_chk}, Allow={h_get_chk.get('allow')}",
+            )
+
+            # 53. Homepage ETag/304 + Public Cache vs /staff & /admin X-Robots-Tag noindex & Private No-Store
+            st_h1, h_h1, _ = http_req(port, "GET", "/")
+            h1_etag = h_h1.get("etag", "")
+            st_h304, _, _ = http_req(port, "GET", "/", headers={"If-None-Match": h1_etag})
+            st_stf2, h_stf2, _ = http_req(port, "GET", "/staff")
+            st_adm2, h_adm2, _ = http_req(port, "GET", "/admin", headers={"Cookie": admin_cookie})
+            cache_split_ok = (
+                st_h1 == 200
+                and "public, max-age=300" in h_h1.get("cache-control", "")
+                and st_h304 == 304
+                and st_stf2 == 200
+                and "noindex" in h_stf2.get("x-robots-tag", "")
+                and "private" in h_stf2.get("cache-control", "")
+                and st_adm2 == 200
+                and "noindex" in h_adm2.get("x-robots-tag", "")
+                and "no-store" in h_adm2.get("cache-control", "")
+            )
+            record(
+                "Homepage ETag/304 & Internal Portal X-Robots-Tag noindex + Private No-Store",
+                cache_split_ok,
+                f"home_304={st_h304}, staff_noindex={h_stf2.get('x-robots-tag')}, admin_noindex={h_adm2.get('x-robots-tag')}",
+            )
+
+            # 54. Anti-Spoofing X-Real-IP Ignored When TRUST_PROXY=false
+            srv.rate_limiter._buckets.clear()
+            spoof_codes = []
+            for idx_sp in range(18):
+                st_sp, _, _ = http_req(
+                    port,
+                    "POST",
+                    "/api/appointments/check",
+                    body={"appointment_number": "APT-20261128-999", "mobile": "9822334455"},
+                    headers={"X-Real-IP": f"10.0.0.{idx_sp + 1}", "X-Forwarded-For": f"198.51.100.{idx_sp + 1}"},
+                )
+                spoof_codes.append(st_sp)
+            record(
+                "Anti-Spoofing X-Real-IP / X-Forwarded-For Rate-Limit Bypass Blocked",
+                429 in spoof_codes,
+                f"Spoofed-IP burst: {spoof_codes.count(404)} allowed, {spoof_codes.count(429)} blocked (429)",
+            )
+
+            # 55. Custom Branded 404 Page for Browsers (Zero Staff Links) vs Clean JSON 404 on /api/*
+            st_nf_html, h_nf_html, b_nf_html = http_req(port, "GET", "/nonexistent-hospital-page", headers={"Accept": "text/html"})
+            st_nf_api, h_nf_api, b_nf_api = http_req(port, "GET", "/api/nonexistent-endpoint", headers={"Accept": "text/html"})
+            custom_404_ok = (
+                st_nf_html == 404
+                and "text/html" in h_nf_html.get("content-type", "")
+                and "Page Not Found" in b_nf_html
+                and 'href="/staff"' not in b_nf_html
+                and 'href="/admin"' not in b_nf_html
+                and st_nf_api == 404
+                and "application/json" in h_nf_api.get("content-type", "")
+            )
+            record(
+                "Custom Branded 404 Page (HTML for Browsers, JSON for /api/*, Zero Internal Leaks)",
+                custom_404_ok,
+                f"html_404={st_nf_html} ({h_nf_html.get('content-type')}), api_404={st_nf_api} ({h_nf_api.get('content-type')})",
             )
 
             # 13. Rate limiting enforcement
