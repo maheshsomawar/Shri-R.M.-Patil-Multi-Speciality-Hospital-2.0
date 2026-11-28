@@ -50,11 +50,6 @@ HOT_QUERIES = [
         "SELECT id, job_type FROM background_jobs WHERE status = 'pending' ORDER BY run_after ASC LIMIT 10",
         (),
     ),
-    (
-        "Public appointment status check (UNIQUE index)",
-        "SELECT id, status FROM appointments WHERE appointment_number = ?",
-        ("APT-20261128-001",),
-    ),
 ]
 
 

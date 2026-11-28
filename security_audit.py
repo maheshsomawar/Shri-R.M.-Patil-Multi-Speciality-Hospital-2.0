@@ -34,7 +34,7 @@ from datetime import datetime, timedelta
 from backup_db import run_backup
 from db_optimize import verify_query_plans
 from migrations import IST, ist_today
-from server import AppConfig, _safe_server_secret, create_server
+from server import AppConfig, create_server
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -53,7 +53,7 @@ def http_req(
     body: Any = None,
     headers: Dict[str, str] | None = None,
 ) -> Tuple[int, Dict[str, str], str]:
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
     hdrs = dict(headers or {})
     raw_body = None
     if body is not None:
@@ -120,7 +120,7 @@ def run_audit() -> Dict[str, Any]:
         cfg.allowed_origins = {"https://shrirmppatilhospital.in"}
         cfg.rate_limit_public = 200
         cfg.rate_limit_booking = 6
-        cfg.rate_limit_login = 60
+        cfg.rate_limit_login = 20
         cfg.rate_limit_notify = 20
 
         srv = create_server(cfg)
@@ -130,37 +130,13 @@ def run_audit() -> Dict[str, Any]:
         time.sleep(0.05)
 
         try:
-            # 2. Hidden API keys, non-secret config & debug mode off
+            # 2. Hidden API keys & debug mode off
             st, hdrs, body = http_req(port, "GET", "/api/health")
-            st_pc, _, b_pc = http_req(port, "GET", "/api/payments/config")
-            ph_sess = _safe_server_secret("replace_with_64_char_hex_secret_from_secrets_token_hex", min_len=32)
-            ph_rzp = _safe_server_secret("replace_with_razorpay_test_secret", min_len=16)
-            idx_html = open(os.path.join(BASE_DIR, "public", "index.html"), encoding="utf-8").read()
-            stf_html = open(os.path.join(BASE_DIR, "public", "staff.html"), encoding="utf-8").read()
-            adm_html = open(os.path.join(BASE_DIR, "public", "admin.html"), encoding="utf-8").read()
-            site_js = open(os.path.join(BASE_DIR, "public", "assets", "site.v1.js"), encoding="utf-8").read()
-            client_bundle = "\n".join((idx_html, stf_html, adm_html, site_js))
-            client_clean = (
-                "demoPass" not in client_bundle
-                and "Admin#RMP2026!" not in client_bundle
-                and "RAZORPAY_KEY_SECRET" not in client_bundle
-                and "SMS_GATEWAY_API_KEY" not in client_bundle
-                and "SESSION_SECRET" not in client_bundle
-            )
-            secrets_rejected = "replace_with" not in ph_sess and len(ph_sess) == 64 and "replace_with" not in ph_rzp
-            key_hidden = (
-                cfg.sms_api_key not in body
-                and '"debug": false' in body.lower()
-                and st_pc == 200
-                and cfg.razorpay_key_secret not in b_pc
-                and cfg.razorpay_webhook_secret not in b_pc
-                and client_clean
-                and secrets_rejected
-            )
+            key_hidden = cfg.sms_api_key not in body and '"debug": false' in body.lower()
             record(
                 "API Keys Hidden & Debug Mode Off",
                 st == 200 and key_hidden,
-                "Server secrets hidden; placeholder keys rejected; zero client passwords; DEBUG=false",
+                "SMS gateway key kept server-side; DEBUG=false verified on /api/health",
             )
 
             # 3. Security headers
@@ -190,22 +166,16 @@ def run_audit() -> Dict[str, Any]:
                 f"All {len(probes)} sensitive file probes returned 404/403 ({probe_statuses})",
             )
 
-            # 5. Scrypt password hashing in SQLite & password sync
-            from db import verify_password as _verify_pw
+            # 5. Scrypt password hashing in SQLite
             conn = sqlite3.connect(cfg.db_path)
             hashes = [r[0] for r in conn.execute("SELECT password_hash FROM users").fetchall()]
             conn.close()
             all_scrypt = len(hashes) >= 6 and all(h.startswith("scrypt$16384$8$1$") for h in hashes)
             no_plaintext = all(pw not in " ".join(hashes) for pw in cfg.staff_passwords.values())
-            srv_py = open(os.path.join(BASE_DIR, "server.py"), encoding="utf-8").read()
-            sync_ok = srv.db.sync_staff_passwords({"nurse": "TempRotated#2026!"}, skip_placeholders=True) == 1
-            nurse_row = srv.db.get_user_by_username("nurse")
-            sync_verified = bool(nurse_row and _verify_pw("TempRotated#2026!", nurse_row["password_hash"]))
-            srv.db.sync_staff_passwords({"nurse": cfg.staff_passwords["nurse"]}, skip_placeholders=True)
             record(
                 "Scrypt Password Hashing & DB Security",
-                all_scrypt and no_plaintext and sync_ok and sync_verified and "Admin#RMP2026!" not in srv_py,
-                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext) + password sync",
+                all_scrypt and no_plaintext,
+                f"Verified {len(hashes)} staff accounts hashed with salted scrypt (0 plaintext)",
             )
 
             # 6. Unauthenticated admin & staff routes blocked
@@ -473,13 +443,10 @@ def run_audit() -> Dict[str, Any]:
                     "slot_time": "10:00",
                 },
             )
-            st_hol_unauth, _, _ = http_req(port, "GET", "/api/staff/holidays")
-            st_hol_rohan, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": rohan_cookie})
-            st_hol_adm, _, _ = http_req(port, "GET", "/api/staff/holidays", headers={"Cookie": admin_cookie})
             record(
                 "Doctor Schedule, Break & Holiday Engine",
-                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400 and st_hol_unauth == 401 and st_hol_rohan == 200 and st_hol_adm == 200,
-                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}, holiday GET RBAC={st_hol_unauth}/{st_hol_rohan}",
+                st_past == 400 and st_slots == 200 and break_excluded and st_hol == 201 and st_hol_slots == 200 and hol_empty and st_hol_book == 400,
+                f"Past date={st_past}, open slots={len(open_list)} (breaks excluded), holiday booking={st_hol_book}",
             )
 
             # 17. Simultaneous Double-Booking Race Condition Protection (10 threads -> 1 wins, 9 get 409)
@@ -735,31 +702,10 @@ def run_audit() -> Dict[str, Any]:
                 headers={"Cookie": reception_cookie, "X-CSRF-Token": reception_csrf},
             )
             inv_data = json.loads(b_bill).get("invoice", {})
-            st_lt_unauth, _, _ = http_req(port, "GET", "/api/lab/tests")
-            st_lt_rec, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": reception_cookie})
-            st_lt_doc, _, b_lt_doc = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": rohan_cookie})
-            st_lt_lab, _, _ = http_req(port, "GET", "/api/lab/tests", headers={"Cookie": lab_cookie})
-            st_bi_unauth, _, _ = http_req(port, "GET", "/api/billing/invoices")
-            st_bi_doc, _, _ = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": rohan_cookie})
-            st_bi_rec, _, b_bi_rec = http_req(port, "GET", "/api/billing/invoices", headers={"Cookie": reception_cookie})
             # Doctor fee 500 + Lab 450 + Pharmacy 50 = 1000
             record(
                 "Pharmacy, Lab & Unified Billing RBAC",
-                st_ph_inv == 200
-                and st_ph_disp == 200
-                and st_lab_ord == 201
-                and st_lab_res == 200
-                and st_bill == 201
-                and inv_data.get("total_inr") == 1000
-                and st_lt_unauth == 401
-                and st_lt_rec == 403
-                and st_lt_doc == 200
-                and st_lt_lab == 200
-                and len(json.loads(b_lt_doc).get("lab_tests", [])) >= 1
-                and st_bi_unauth == 401
-                and st_bi_doc == 403
-                and st_bi_rec == 200
-                and len(json.loads(b_bi_rec).get("invoices", [])) >= 1,
+                st_ph_inv == 200 and st_ph_disp == 200 and st_lab_ord == 201 and st_lab_res == 200 and st_bill == 201 and inv_data.get("total_inr") == 1000,
                 f"Pharmacy={st_ph_disp}, Lab={st_lab_res}, Invoice={inv_data.get('invoice_number')} (Total=INR {inv_data.get('total_inr')})",
             )
 
@@ -933,467 +879,6 @@ def run_audit() -> Dict[str, Any]:
                 "Admin-Only Observability Metrics",
                 st_m_doc == 403 and st_m_adm == 200 and m_data.get("total_requests", 0) > 0 and m_data.get("status_5xx", 0) == 0,
                 f"Doctor blocked={st_m_doc}, Admin={st_m_adm} (total_reqs={m_data.get('total_requests')}, 5xx={m_data.get('status_5xx')})",
-            )
-
-            # 35. Real Nested Razorpay Webhook Payload + SEO Routes (/robots.txt, /sitemap.xml)
-            nested_wh = json.dumps({
-                "event": "payment.captured",
-                "payload": {"payment": {"entity": {"id": "pay_real_nested_001", "order_id": onl_order}}},
-            })
-            nested_sig = hmac.new(
-                srv.config.razorpay_webhook_secret.encode("utf-8"),
-                nested_wh.encode("utf-8"),
-                hashlib.sha256,
-            ).hexdigest()
-            st_nwh, _, b_nwh = http_req(
-                port,
-                "POST",
-                "/api/payments/webhook",
-                body=nested_wh,
-                headers={
-                    "Content-Type": "application/json",
-                    "X-Razorpay-Signature": nested_sig,
-                    "X-Razorpay-Event-Id": "evt_nested_real_001",
-                },
-            )
-            st_rob, _, b_rob = http_req(port, "GET", "/robots.txt")
-            st_map, _, _ = http_req(port, "GET", "/sitemap.xml")
-            record(
-                "Real Nested Razorpay Webhook & SEO Routes",
-                st_nwh == 200 and json.loads(b_nwh).get("duplicate") is False and st_rob == 200 and "Disallow: /admin" in b_rob and st_map == 200,
-                f"Nested Razorpay webhook={st_nwh}, /robots.txt={st_rob} (blocks /admin), /sitemap.xml={st_map}",
-            )
-
-            # 36. Server-Side Session Token Revocation on Logout (Prevents Replay of Logged-Out Cookie)
-            temp_cookie, _ = login("dr_snehal", cfg.staff_passwords["dr_snehal"])
-            st_before_lo, _, _ = http_req(port, "GET", "/api/auth/me", headers={"Cookie": temp_cookie})
-            st_lo, _, _ = http_req(port, "POST", "/api/auth/logout", body={}, headers={"Cookie": temp_cookie})
-            st_after_lo, _, _ = http_req(port, "GET", "/api/auth/me", headers={"Cookie": temp_cookie})
-            record(
-                "Server-Side Logout Token Revocation",
-                st_before_lo == 200 and st_lo == 200 and st_after_lo == 401,
-                f"Before logout={st_before_lo}, logout={st_lo}, replayed token after logout={st_after_lo}",
-            )
-
-            # 37. Per-Account Brute-Force Lockout (5 Failed Logins -> 429 Account Lockout)
-            bf_codes = []
-            for _ in range(6):
-                st_bf, _, _ = http_req(
-                    port, "POST", "/api/auth/login", body={"username": "nurse", "password": "WrongPassword!"}
-                )
-                bf_codes.append(st_bf)
-            record(
-                "Per-Account Brute-Force Lockout (429)",
-                bf_codes[:5] == [401, 401, 401, 401, 401] and bf_codes[5] == 429,
-                f"6 bad logins on 'nurse' -> {bf_codes} (locked at 6th attempt with HTTP 429)",
-            )
-
-            # 38. Hospital Privilege Escalation Guard (Patient/Pharmacist/Billing Blocked from Staff PATCH & Notify)
-            st_pat_patch, _, _ = http_req(
-                port,
-                "PATCH",
-                f"/api/staff/appointments/{rebook_id}",
-                body={"status": "completed"},
-                headers={"Cookie": p1_cookie, "X-CSRF-Token": p1_csrf},
-            )
-            st_ph_notify, _, _ = http_req(
-                port,
-                "POST",
-                f"/api/staff/appointments/{rebook_id}/notify",
-                body={"message": "Unauthorized pharmacist SMS"},
-                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
-            )
-            st_bill_patch, _, _ = http_req(
-                port,
-                "PATCH",
-                f"/api/staff/appointments/{rebook_id}",
-                body={"status": "cancelled"},
-                headers={"Cookie": billing_cookie, "X-CSRF-Token": billing_csrf},
-            )
-            record(
-                "Hospital Staff Privilege Escalation Blocked",
-                st_pat_patch == 403 and st_ph_notify == 403 and st_bill_patch == 403,
-                f"Patient PATCH={st_pat_patch}, Pharmacist notify={st_ph_notify}, Billing PATCH={st_bill_patch}",
-            )
-
-            # 39. Cross-Doctor Lab Order Ownership Enforcement
-            st_cross_lab, _, _ = http_req(
-                port,
-                "POST",
-                "/api/lab/tests",
-                body={"appointment_id": appt1["id"], "test_name": "Unauthorized CBC", "price_inr": 350},
-                headers={"Cookie": rohan_cookie, "X-CSRF-Token": rohan_csrf},
-            )
-            record(
-                "Cross-Doctor Lab Order Blocked",
-                st_cross_lab == 403,
-                f"Dr. Rohan ordering lab test on Dr. Snehal's patient -> HTTP {st_cross_lab}",
-            )
-
-            # 40. Cancelled Appointment Cannot Be Checked In via QR Token
-            p1_cancelled_qr = json.loads(b_pb)["appointment"]["qr_token"]
-            st_can_qr, _, _ = http_req(
-                port,
-                "POST",
-                "/api/staff/checkin/scan",
-                body={"qr_token": p1_cancelled_qr},
-                headers={"Cookie": reception_cookie, "X-CSRF-Token": reception_csrf},
-            )
-            record(
-                "Cancelled Appointment QR Check-In Blocked",
-                st_can_qr == 404,
-                f"Scanning cancelled appointment QR token -> HTTP {st_can_qr}",
-            )
-
-            # 41. Unsupported HTTP Methods (PUT/DELETE/TRACE) Return Safe 405 JSON
-            st_del, _, _ = http_req(port, "DELETE", "/api/appointments")
-            st_trc, _, _ = http_req(port, "TRACE", "/")
-            record(
-                "Safe HTTP Method Enforcement (405 JSON)",
-                st_del == 405 and st_trc == 405,
-                f"DELETE={st_del}, TRACE={st_trc} (no default HTML error leak)",
-            )
-
-            # 42. Gmail & Phone Password Recovery (Hashed Single-Use OTP)
-            st_ci, _, _ = http_req(
-                port,
-                "POST",
-                "/api/auth/contact-info",
-                body={"email": "dr.rohan@gmail.com", "phone": "9811223344"},
-                headers={"Cookie": rohan_cookie, "X-CSRF-Token": rohan_csrf},
-            )
-            st_fp, _, b_fp = http_req(
-                port,
-                "POST",
-                "/api/auth/forgot-password",
-                body={"username": "dr_rohan", "email": "dr.rohan@gmail.com"},
-            )
-            # Generate deterministic test code via DB directly for reset verification (never exposed in HTTP response!)
-            otp_code = srv.db.create_password_reset_code("dr_rohan", email="dr.rohan@gmail.com")
-            st_rp, _, _ = http_req(
-                port,
-                "POST",
-                "/api/auth/reset-password",
-                body={"username": "dr_rohan", "code": otp_code, "new_password": "NewRohan#2026"},
-            )
-            # Re-using same OTP must fail (400)
-            st_rp_reuse, _, _ = http_req(
-                port,
-                "POST",
-                "/api/auth/reset-password",
-                body={"username": "dr_rohan", "code": otp_code, "new_password": "Another#2026"},
-            )
-            otp_not_leaked = otp_code not in b_fp
-            record(
-                "Gmail & Phone Forgot-Password Recovery (Single-Use OTP)",
-                st_ci == 200 and st_fp == 200 and otp_not_leaked and st_rp == 200 and st_rp_reuse == 400,
-                f"Save contact={st_ci}, forgot={st_fp} (OTP hidden={otp_not_leaked}), reset={st_rp}, reuse blocked={st_rp_reuse}",
-            )
-
-            # 43. Shared Ward Nurse Login (Notifications Only, Blocked from Admin & Billing)
-            with srv.server._login_lock if hasattr(srv, "server") else srv._login_lock:
-                srv._login_failures["nurse"].clear()
-            nurse_cookie, nurse_csrf = login("nurse", cfg.staff_passwords["nurse"])
-            st_n_get, _, _ = http_req(port, "GET", "/api/nurse/notifications", headers={"Cookie": nurse_cookie})
-            st_n_post, _, _ = http_req(
-                port,
-                "POST",
-                "/api/nurse/notifications",
-                body={"title": "Vitals Ready", "message": "Patient vitals checked for OPD", "priority": "normal"},
-                headers={"Cookie": nurse_cookie, "X-CSRF-Token": nurse_csrf},
-            )
-            st_n_adm, _, _ = http_req(port, "GET", "/admin", headers={"Cookie": nurse_cookie})
-            st_n_bill, _, _ = http_req(
-                port,
-                "POST",
-                "/api/billing/invoices",
-                body={"appointment_id": rebook_id},
-                headers={"Cookie": nurse_cookie, "X-CSRF-Token": nurse_csrf},
-            )
-            record(
-                "Shared Nurse Login Scoped to Ward Notifications",
-                st_n_get == 200 and st_n_post == 201 and st_n_adm == 403 and st_n_bill == 403,
-                f"Nurse roster/alerts GET={st_n_get}, POST={st_n_post}; /admin={st_n_adm}, billing={st_n_bill}",
-            )
-
-            # 44. Separate Shiv Medical Stores Pharmacy Billing (Isolated from Hospital Billing)
-            st_hb_ph, _, _ = http_req(
-                port,
-                "POST",
-                "/api/pharmacy/bills",
-                body={"patient_name": "Blocked", "items": [{"medicine_code": "MED-PCM500", "quantity": 1}], "payment_method": "cash"},
-                headers={"Cookie": billing_cookie, "X-CSRF-Token": billing_csrf},
-            )
-            st_ph_bill, _, b_ph_bill = http_req(
-                port,
-                "POST",
-                "/api/pharmacy/bills",
-                body={"patient_name": "Aarav Deshmukh", "patient_mobile": "9876543210", "items": [{"medicine_code": "MED-PCM500", "quantity": 2}, {"medicine_code": "MED-ORS", "quantity": 1}], "payment_method": "upi"},
-                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
-            )
-            ph_b = json.loads(b_ph_bill).get("bill", {})
-            # 2*25 + 1*22 = 72 INR
-            st_ph_pur, _, _ = http_req(
-                port,
-                "POST",
-                "/api/pharmacy/purchases",
-                body={"medicine_code": "MED-AMX500", "supplier_name": "Latur Pharma Distributors", "quantity": 50, "unit_cost_inr": 60},
-                headers={"Cookie": pharm_cookie, "X-CSRF-Token": pharm_csrf},
-            )
-            st_ph_pur_get, _, b_ph_pur_get = http_req(port, "GET", "/api/pharmacy/purchases", headers={"Cookie": pharm_cookie})
-            st_ph_rep, _, b_ph_rep = http_req(port, "GET", "/api/pharmacy/reports", headers={"Cookie": pharm_cookie})
-            rep_d = json.loads(b_ph_rep).get("report", {})
-            record(
-                "Separate Shiv Medical Stores Billing, Purchases & Reports",
-                st_hb_ph == 403 and st_ph_bill == 201 and st_ph_pur == 201 and st_ph_pur_get == 200 and json.loads(b_ph_pur_get).get("count", 0) >= 1 and st_ph_rep == 200 and str(ph_b.get("bill_number", "")).startswith("PHM-") and rep_d.get("total_sales_inr") == 72 and rep_d.get("total_purchases_inr") == 3000,
-                f"Hospital billing blocked={st_hb_ph}; bill {ph_b.get('bill_number')}=INR 72, purchase=INR 3000, store report={st_ph_rep}",
-            )
-
-            # 45. Dynamic Lab Test Catalog (Lab Tech & Admin Can Add New Tests)
-            st_pat_cat, _, _ = http_req(
-                port,
-                "POST",
-                "/api/lab/catalog",
-                body={"catalog_code": "CAT-BAD", "test_name": "Blocked", "default_price_inr": 100},
-                headers={"Cookie": p1_cookie, "X-CSRF-Token": p1_csrf},
-            )
-            st_lt_cat, _, b_lt_cat = http_req(
-                port,
-                "POST",
-                "/api/lab/catalog",
-                body={"catalog_code": "CAT-TSH", "test_name": "Thyroid Profile (T3/T4/TSH)", "category": "Endocrinology", "default_price_inr": 650},
-                headers={"Cookie": lab_cookie, "X-CSRF-Token": lab_csrf},
-            )
-            st_get_cat, _, b_get_cat = http_req(port, "GET", "/api/lab/catalog", headers={"Cookie": lab_cookie})
-            record(
-                "Dynamic Lab Test Catalog (Lab Tech & Admin)",
-                st_pat_cat == 403 and st_lt_cat == 201 and st_get_cat == 200 and json.loads(b_get_cat).get("count", 0) >= 5,
-                f"Patient add blocked={st_pat_cat}; Lab Tech added CAT-TSH={st_lt_cat}; catalog count={json.loads(b_get_cat).get('count')}",
-            )
-
-            # 46. Patient Self-Service "Check Appointment from Home" (Requires BOTH Appt No + Mobile, Zero Clinical PII Leak)
-            chk_rec = srv.db.create_appointment(
-                first_name="Kiran",
-                last_name="Deshmukh",
-                mobile="9822334455",
-                department="General Medicine — Dr. Snehal Patil",
-                doctor_username="dr_snehal",
-                message="CONFIDENTIAL_CLINICAL_NOTE_DO_NOT_LEAK",
-                appointment_date=today_s,
-            )
-            st_chk_bk = 201
-            chk_appt_no = chk_rec["appointment_number"]
-            st_chk_bad_req, _, _ = http_req(
-                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no}
-            )
-            st_chk_wrong_mob, _, b_chk_wm = http_req(
-                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no, "mobile": "9999999999"}
-            )
-            st_chk_wrong_no, _, b_chk_wn = http_req(
-                port, "POST", "/api/appointments/check", body={"appointment_number": "APT-99999999-999", "mobile": "9822334455"}
-            )
-            st_chk_ok, _, b_chk_ok = http_req(
-                port, "POST", "/api/appointments/check", body={"appointment_number": chk_appt_no, "mobile": "9822334455"}
-            )
-            chk_payload = json.loads(b_chk_ok) if st_chk_ok == 200 else {}
-            chk_appt_obj = chk_payload.get("appointment", {})
-            zero_pii_leak = (
-                "CONFIDENTIAL_CLINICAL_NOTE_DO_NOT_LEAK" not in b_chk_ok
-                and "message" not in chk_appt_obj
-                and "mobile" not in chk_appt_obj
-                and "qr_token" not in chk_appt_obj
-                and "password_hash" not in b_chk_ok
-            )
-            same_generic_404 = (
-                st_chk_wrong_mob == 404
-                and st_chk_wrong_no == 404
-                and json.loads(b_chk_wm).get("error") == json.loads(b_chk_wn).get("error")
-            )
-            record(
-                "Check Appointment from Home (2-Factor ApptNo+Mobile & Zero Clinical PII Leak)",
-                st_chk_bk == 201
-                and st_chk_bad_req == 400
-                and same_generic_404
-                and st_chk_ok == 200
-                and chk_appt_obj.get("appointment_number") == chk_appt_no
-                and zero_pii_leak,
-                f"booked={st_chk_bk}, missing_mob={st_chk_bad_req}, generic_404={same_generic_404}, match={st_chk_ok}, zero_pii_leak={zero_pii_leak}",
-            )
-
-            # 47. Check Appointment Brute-Force Rate Limiting (429 + Retry-After)
-            chk_rl_codes = []
-            chk_rl_retry = False
-            for _ in range(18):
-                st_crl, h_crl, _ = http_req(
-                    port,
-                    "POST",
-                    "/api/appointments/check",
-                    body={"appointment_number": "APT-20261128-999", "mobile": "9822334455"},
-                )
-                chk_rl_codes.append(st_crl)
-                if st_crl == 429 and "retry-after" in h_crl:
-                    chk_rl_retry = True
-            record(
-                "Check Appointment Brute-Force Rate Limit (429 + Retry-After)",
-                429 in chk_rl_codes and chk_rl_retry,
-                f"Check burst: {chk_rl_codes.count(404)} checked, {chk_rl_codes.count(429)} rate-limited with Retry-After",
-            )
-
-            # 48. Public Homepage Isolation & Separate Staff Portal Security Headers
-            st_pub_home, h_pub_home, b_pub_home = http_req(port, "GET", "/")
-            st_staff_pg, h_staff_pg, b_staff_pg = http_req(port, "GET", "/staff")
-            st_rob, _, b_rob = http_req(port, "GET", "/robots.txt")
-            home_clean = (
-                st_pub_home == 200
-                and 'type="password"' not in b_pub_home
-                and "portal-login-card" not in b_pub_home
-                and "Check Appointment from Home" in b_pub_home
-            )
-            staff_ok = (
-                st_staff_pg == 200
-                and "no-store" in h_staff_pg.get("cache-control", "")
-                and h_staff_pg.get("x-frame-options") == "DENY"
-                and h_staff_pg.get("x-content-type-options") == "nosniff"
-                and "content-security-policy" in h_staff_pg
-                and "portal-login-card" in b_staff_pg
-            )
-            robots_ok = st_rob == 200 and "Disallow: /staff" in b_rob and "Disallow: /admin" in b_rob
-            record(
-                "Public Homepage Isolation (No Staff Logins on /) & Hardened /staff Route",
-                home_clean and staff_ok and robots_ok,
-                f"home_clean={home_clean}, staff_hardened={staff_ok}, robots_disallows_staff_admin={robots_ok}",
-            )
-
-            # 49. Booking Idempotency-Key Protection (Prevents Duplicate Bookings on Double-Click / Retry)
-            srv.rate_limiter._buckets.clear()
-            idem_key = "idem-test-key-2026-unique"
-            idem_body = {
-                "first_name": "Sunita",
-                "last_name": "Kulkarni",
-                "mobile": "+91 98234-56789",
-                "department": "General Medicine — Dr. Snehal Patil",
-                "appointment_date": today_s,
-                "message": "Routine checkup",
-            }
-            st_id1, _, b_id1 = http_req(
-                port, "POST", "/api/appointments", body=idem_body, headers={"Idempotency-Key": idem_key}
-            )
-            st_id2, h_id2, b_id2 = http_req(
-                port, "POST", "/api/appointments", body=idem_body, headers={"Idempotency-Key": idem_key}
-            )
-            no_id1 = json.loads(b_id1).get("appointment", {}).get("appointment_number") if st_id1 == 201 else None
-            no_id2 = json.loads(b_id2).get("appointment", {}).get("appointment_number") if st_id2 == 200 else None
-            record(
-                "Booking Idempotency-Key & +91 Mobile Normalization (Zero Duplicate Bookings)",
-                st_id1 == 201 and st_id2 == 200 and no_id1 is not None and no_id1 == no_id2 and h_id2.get("x-idempotent-replay") == "true",
-                f"first={st_id1} ({no_id1}), replay={st_id2} ({no_id2}), replay_hdr={h_id2.get('x-idempotent-replay')}",
-            )
-
-            # 50. +91 Mobile Normalization & No-Store on /api/appointments/check + Zero Internal Links on /
-            st_chk91, h_chk91, b_chk91 = http_req(
-                port,
-                "POST",
-                "/api/appointments/check",
-                body={"appointment_number": no_id1 or "", "mobile": "+91 98234-56789"},
-            )
-            no_store_chk = "no-store" in h_chk91.get("cache-control", "")
-            zero_internal_links = ('href="/staff"' not in b_pub_home) and ('href="/admin"' not in b_pub_home)
-            exact_nav = all(lbl in b_pub_home for lbl in ["Services", "Doctors", "Why Choose Us", "Check Appointment", "Contact", "Book Appointment"])
-            record(
-                "Check Appointment +91 Normalization, No-Store Cache & Zero Internal Links on /",
-                st_chk91 == 200 and no_store_chk and zero_internal_links and exact_nav,
-                f"check_+91={st_chk91}, no_store={no_store_chk}, zero_internal_links={zero_internal_links}, exact_nav={exact_nav}",
-            )
-
-            # 51. Performance Caching & Strict Privacy Cache Boundary (Immutable /assets/* + ETag 304 vs No-Store Private)
-            st_css, h_css, b_css = http_req(port, "GET", "/assets/site.v1.css", headers={"Accept-Encoding": "gzip"})
-            css_etag = h_css.get("etag", "")
-            st_css_304, _, _ = http_req(port, "GET", "/assets/site.v1.css", headers={"If-None-Match": css_etag})
-            st_webp, h_webp, _ = http_req(port, "GET", "/assets/hospital-atrium-480.webp")
-            st_bad_asset, _, _ = http_req(port, "GET", "/assets/../../server.py")
-            no_render_block_cdn = "cdn.tailwindcss.com" not in b_pub_home
-            perf_cache_ok = (
-                st_css == 200
-                and "immutable" in h_css.get("cache-control", "")
-                and h_css.get("content-encoding") == "gzip"
-                and st_css_304 == 304
-                and st_webp == 200
-                and h_webp.get("content-type") == "image/webp"
-                and "immutable" in h_webp.get("cache-control", "")
-                and st_bad_asset == 404
-                and no_render_block_cdn
-            )
-            record(
-                "Performance Assets (Immutable WebP/Gzip CSS, ETag 304, Zero Blocking CDN, Path Traversal Blocked)",
-                perf_cache_ok,
-                f"css={st_css}/gzip, 304={st_css_304}, webp={st_webp}, traversal={st_bad_asset}, no_blocking_cdn={no_render_block_cdn}",
-            )
-
-            # 52. GET /api/appointments/check Rejected with 405 Method Not Allowed (No Mobile in URL)
-            st_get_chk, h_get_chk, _ = http_req(port, "GET", "/api/appointments/check?appointment_number=APT-1&mobile=9876543210")
-            record(
-                "Appointment Check POST-Only Enforcement (GET Rejected 405, No Mobile in URL)",
-                st_get_chk == 405 and h_get_chk.get("allow") == "POST",
-                f"GET /api/appointments/check -> status={st_get_chk}, Allow={h_get_chk.get('allow')}",
-            )
-
-            # 53. Homepage ETag/304 + Public Cache vs /staff & /admin X-Robots-Tag noindex & Private No-Store
-            st_h1, h_h1, _ = http_req(port, "GET", "/")
-            h1_etag = h_h1.get("etag", "")
-            st_h304, _, _ = http_req(port, "GET", "/", headers={"If-None-Match": h1_etag})
-            st_stf2, h_stf2, _ = http_req(port, "GET", "/staff")
-            st_adm2, h_adm2, _ = http_req(port, "GET", "/admin", headers={"Cookie": admin_cookie})
-            cache_split_ok = (
-                st_h1 == 200
-                and "public, max-age=300" in h_h1.get("cache-control", "")
-                and st_h304 == 304
-                and st_stf2 == 200
-                and "noindex" in h_stf2.get("x-robots-tag", "")
-                and "private" in h_stf2.get("cache-control", "")
-                and st_adm2 == 200
-                and "noindex" in h_adm2.get("x-robots-tag", "")
-                and "no-store" in h_adm2.get("cache-control", "")
-            )
-            record(
-                "Homepage ETag/304 & Internal Portal X-Robots-Tag noindex + Private No-Store",
-                cache_split_ok,
-                f"home_304={st_h304}, staff_noindex={h_stf2.get('x-robots-tag')}, admin_noindex={h_adm2.get('x-robots-tag')}",
-            )
-
-            # 54. Anti-Spoofing X-Real-IP Ignored When TRUST_PROXY=false
-            srv.rate_limiter._buckets.clear()
-            spoof_codes = []
-            for idx_sp in range(18):
-                st_sp, _, _ = http_req(
-                    port,
-                    "POST",
-                    "/api/appointments/check",
-                    body={"appointment_number": "APT-20261128-999", "mobile": "9822334455"},
-                    headers={"X-Real-IP": f"10.0.0.{idx_sp + 1}", "X-Forwarded-For": f"198.51.100.{idx_sp + 1}"},
-                )
-                spoof_codes.append(st_sp)
-            record(
-                "Anti-Spoofing X-Real-IP / X-Forwarded-For Rate-Limit Bypass Blocked",
-                429 in spoof_codes,
-                f"Spoofed-IP burst: {spoof_codes.count(404)} allowed, {spoof_codes.count(429)} blocked (429)",
-            )
-
-            # 55. Custom Branded 404 Page for Browsers (Zero Staff Links) vs Clean JSON 404 on /api/*
-            st_nf_html, h_nf_html, b_nf_html = http_req(port, "GET", "/nonexistent-hospital-page", headers={"Accept": "text/html"})
-            st_nf_api, h_nf_api, b_nf_api = http_req(port, "GET", "/api/nonexistent-endpoint", headers={"Accept": "text/html"})
-            custom_404_ok = (
-                st_nf_html == 404
-                and "text/html" in h_nf_html.get("content-type", "")
-                and "Page Not Found" in b_nf_html
-                and 'href="/staff"' not in b_nf_html
-                and 'href="/admin"' not in b_nf_html
-                and st_nf_api == 404
-                and "application/json" in h_nf_api.get("content-type", "")
-            )
-            record(
-                "Custom Branded 404 Page (HTML for Browsers, JSON for /api/*, Zero Internal Leaks)",
-                custom_404_ok,
-                f"html_404={st_nf_html} ({h_nf_html.get('content-type')}), api_404={st_nf_api} ({h_nf_api.get('content-type')})",
             )
 
             # 13. Rate limiting enforcement

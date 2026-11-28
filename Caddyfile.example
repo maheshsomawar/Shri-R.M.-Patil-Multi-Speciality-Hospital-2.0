@@ -1,22 +1,20 @@
-# Production Reverse Proxy with Automatic Let's Encrypt HTTPS, Zstd/Gzip Compression & Strict Privacy Caching
-# Replace hospital.example.com with your real domain pointing to this server.
+# Copy to Caddyfile and replace your-hospital-domain.in with your real domain.
+# Caddy automatically provisions and renews free Let's Encrypt HTTPS certificates.
+# Run with: caddy run --config Caddyfile
 
-hospital.example.com {
-    encode zstd gzip
-
-    # Long-lived immutable caching for fingerprinted public assets ONLY
-    @public_assets path /assets/*
-    header @public_assets Cache-Control "public, max-age=31536000, immutable"
-
-    # Strict zero public caching for private staff, admin, patient & API endpoints
-    @private_routes path /staff* /admin* /api/*
-    header @private_routes {
-        Cache-Control "no-store, no-cache, must-revalidate, private"
-        Pragma "no-cache"
-    }
+your-hospital-domain.in {
+    encode gzip zstd
 
     reverse_proxy 127.0.0.1:8080 {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-Proto {scheme}
+    }
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
     }
 }
