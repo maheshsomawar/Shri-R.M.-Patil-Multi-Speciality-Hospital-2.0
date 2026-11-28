@@ -29,7 +29,7 @@ jobs:
       - name: Verify SQLite EXPLAIN QUERY PLAN index usage
         run: python3 db_optimize.py
 
-      - name: Run 58-point Security, Privacy, RBAC & Perf Boundary Audit
+      - name: Run 61-point Security, Privacy, RBAC & Perf Boundary Audit
         run: python3 security_audit.py
 
       - name: Run 380-request Concurrent Traffic & Double-Booking Race Simulation

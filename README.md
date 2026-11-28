@@ -1,6 +1,6 @@
 # Shri R.M. Patil Multi Speciality Hospital & Trauma Care — HMS 2.0
 
-Zero-dependency **Python 3.11 + SQLite WAL + Bounded ThreadPool** full-stack Hospital Website and Hospital Management System featuring a fast isolated Patient Homepage (`/`), Check Appointment from Home (`POST /api/appointments/check`), online-only booking with `Idempotency-Key` replay guard, non-sensitive QR code check-in, standalone Patient Portal (`/patient`), role-strict Staff & Doctor Portal (`/staff` with `Ctrl+K` Command Palette + per-user password rotation), Hospital Admin User & Audit Command Center (`/admin`), automated **58-point security audit**, **8 SQLite index checks**, and **100–1,500 concurrent-user load testing**.
+Zero-dependency **Python 3.11 + SQLite WAL + Bounded ThreadPool** full-stack Hospital Website and Hospital Management System featuring a fast isolated Patient Homepage (`/`), Check Appointment from Home (`POST /api/appointments/check`), online-only booking with `Idempotency-Key` replay guard, non-sensitive QR code check-in, standalone Patient Portal (`/patient`), role-strict Staff & Doctor Portal (`/staff` with `Ctrl+K` Command Palette + per-user password rotation), Hospital Admin User & Audit Command Center (`/admin`), automated **61-point security audit**, **8 SQLite index checks**, and **100–1,500 concurrent-user load testing**.
 
 ## Quick Start (Windows 11 / Linux / macOS)
 
@@ -16,7 +16,7 @@ Zero-dependency **Python 3.11 + SQLite WAL + Bounded ThreadPool** full-stack Hos
    ```powershell
    python migrations.py
    ```
-4. Run query-plan checks, the 58-point security audit, and load tests:
+4. Run query-plan checks, the 61-point security audit, and load tests:
    ```powershell
    python db_optimize.py
    python security_audit.py
@@ -62,4 +62,4 @@ Zero-dependency **Python 3.11 + SQLite WAL + Bounded ThreadPool** full-stack Hos
 - See [`SECURITY_AUDIT_REPORT.md`](SECURITY_AUDIT_REPORT.md), [`PERFORMANCE_TEST_REPORT.md`](PERFORMANCE_TEST_REPORT.md), and [`PERFORMANCE_OPTIMIZATION_REPORT.md`](PERFORMANCE_OPTIMIZATION_REPORT.md) for detailed findings and benchmarks (plus `python perf_benchmark.py` for headless Chrome CWV/E2E verification).
 - **Local Backups:** `python backup_db.py` creates live WAL backups with `PRAGMA integrity_check` and `0600` permissions (encrypt before off-site cloud storage).
 - **High-Traffic Scaling:** `HospitalServer` uses a bounded `ThreadPoolExecutor` (`MAX_WORKERS=64`, `request_queue_size=512`), gzip compression, immutable `/assets/*` ETag caching, and a 30s public catalog cache.
-- **Production Checklist:** Set `DEBUG=false`, `SECURE_COOKIES=true`, `TRUST_PROXY=true` only behind trusted loopback Caddy/Nginx (`Caddyfile.example`), a 64-char random `SESSION_SECRET`, strong unique staff passwords, real Razorpay/SMS keys, and exact `ALLOWED_ORIGINS`.
+- **Production Checklist:** Copy [`.env.production.example`](.env.production.example) to `.env` (`DEBUG=false`, `SECURE_COOKIES=true`, `TRUST_PROXY=true`, exact `PUBLIC_BASE_URL` & `ALLOWED_ORIGINS`, strong `SESSION_SECRET`, staff passwords, TRAI DLT SMS, SMTP OTP email, live Razorpay keys) and follow [`DEPLOY_PRODUCTION_GUIDE.md`](DEPLOY_PRODUCTION_GUIDE.md) with [`Caddyfile.example`](Caddyfile.example).

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care | Chakur, Latur</title>
   <meta name="description" content="Shri R.M. Patil Multi Speciality Hospital &amp; Trauma Care, Chakur, Dist. Latur. 24x7 Emergency, Orthopaedics, Maternity, Dental &amp; General Medicine. Book appointments online or check status from home." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%2300768A%27/%3E%3Cpath d=%27M27 14h10v13h13v10H37v13H27V37H14V27h13z%27 fill=%27%23fff%27/%3E%3C/svg%3E" />
   <link rel="preload" href="/assets/site.v1.css" as="style" />
   <link rel="stylesheet" href="/assets/site.v1.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -501,6 +502,8 @@
             <li><a href="#why-choose-us">Why Choose Us</a></li>
             <li><a href="#appointment-hub">Book Appointment</a></li>
             <li><button type="button" id="open-privacy-btn" style="text-decoration:underline">Privacy Notice</button></li>
+            <li><button type="button" id="open-refund-btn" style="text-decoration:underline">Refund &amp; Cancellation Policy</button></li>
+            <li><button type="button" id="open-terms-btn" style="text-decoration:underline">Terms &amp; Conditions</button></li>
           </ul>
         </div>
 
@@ -544,6 +547,40 @@
         <li>Medical notes, prescriptions, and laboratory reports are never returned through public status checks.</li>
       </ul>
       <button type="button" id="ok-privacy-modal" class="btn-submit-teal" style="margin-top:12px">Close</button>
+    </div>
+  </div>
+
+  <!-- Refund & Cancellation Policy Modal (Razorpay KYC Compliance) -->
+  <div id="refund-modal" class="hidden modal-bg" role="dialog" aria-modal="true" aria-labelledby="refund-title">
+    <div class="modal-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f1f5f9">
+        <h3 id="refund-title" style="margin:0;font-size:17px;font-weight:800;color:#00768A">Refund &amp; Cancellation Policy</h3>
+        <button type="button" id="close-refund-modal" style="background:none;border:0;font-size:22px;color:#64748b;cursor:pointer">&times;</button>
+      </div>
+      <ul style="font-size:13px;color:#475569;padding-left:18px;line-height:1.65;margin-top:12px">
+        <li><strong>Cancellation before consultation:</strong> Appointments cancelled at least 2 hours prior to the booked slot are eligible for a full refund or free reschedule.</li>
+        <li><strong>Doctor unavailability:</strong> If a specialist is called into an emergency trauma procedure, you may reschedule at no extra cost or request a 100% refund.</li>
+        <li><strong>Refund timeline:</strong> Approved online payment refunds are processed back to the original UPI/card payment method within 5&ndash;7 working days.</li>
+        <li><strong>Support Desk:</strong> Call 02381-299133 or 94217 62599 with your Appointment Number for refund assistance.</li>
+      </ul>
+      <button type="button" id="ok-refund-modal" class="btn-submit-teal" style="margin-top:12px">Close</button>
+    </div>
+  </div>
+
+  <!-- Terms & Conditions Modal (Razorpay KYC Compliance) -->
+  <div id="terms-modal" class="hidden modal-bg" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+    <div class="modal-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f1f5f9">
+        <h3 id="terms-title" style="margin:0;font-size:17px;font-weight:800;color:#00768A">Terms &amp; Conditions</h3>
+        <button type="button" id="close-terms-modal" style="background:none;border:0;font-size:22px;color:#64748b;cursor:pointer">&times;</button>
+      </div>
+      <ul style="font-size:13px;color:#475569;padding-left:18px;line-height:1.65;margin-top:12px">
+        <li>Online appointment booking is for scheduled OPD consultations at Shri R.M. Patil Multi Speciality Hospital, Chakur, Dist. Latur.</li>
+        <li>For life-threatening emergencies or accidents, please visit our 24&times;7 Trauma Unit directly or call 02381-299133 immediately.</li>
+        <li>Consultation fees displayed online cover the OPD doctor consultation only; additional diagnostic tests, procedures, or pharmacy medicines (Shiv Medical Stores) are billed separately.</li>
+        <li>Please arrive 15 minutes before your booked time slot with your Appointment Number.</li>
+      </ul>
+      <button type="button" id="ok-terms-modal" class="btn-submit-teal" style="margin-top:12px">Close</button>
     </div>
   </div>
 

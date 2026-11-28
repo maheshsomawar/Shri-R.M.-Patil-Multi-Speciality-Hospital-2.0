@@ -1501,6 +1501,111 @@ def run_audit() -> Dict[str, Any]:
                 f"staff_clean_only={staff_clean_only}, patient_isolated={patient_isolated}",
             )
 
+            # 59. Razorpay KYC Modals, Favicon, Canonical Sitemap, Font CSP & Live JS Checkout Hook
+            st_fav, h_fav, b_fav = http_req(port, "GET", "/favicon.ico")
+            old_base = srv.config.public_base_url
+            srv.config.public_base_url = "https://shrirmppatilhospital.in"
+            st_smap, _, b_smap = http_req(port, "GET", "/sitemap.xml")
+            srv.config.public_base_url = old_base
+            kyc_ok = (
+                'id="refund-modal"' in b_pub_home
+                and 'id="terms-modal"' in b_pub_home
+                and 'rel="icon"' in b_pub_home
+                and st_fav == 200
+                and "image/svg+xml" in h_fav.get("content-type", "")
+                and "<svg" in b_fav
+                and st_smap == 200
+                and "<loc>https://shrirmppatilhospital.in/</loc>" in b_smap
+                and "https://fonts.googleapis.com" in h_pub_home.get("content-security-policy", "")
+                and "https://fonts.gstatic.com" in h_pub_home.get("content-security-policy", "")
+                and "/api/payments/config" in site_js
+                and "provider_order_id" in site_js
+                and "checkout.razorpay.com/v1/checkout.js" in site_js
+            )
+            record(
+                "Razorpay KYC Modals, Favicon, Canonical Sitemap & Live Checkout Hook",
+                kyc_ok,
+                f"fav={st_fav}, sitemap_canonical={'shrirmppatilhospital.in' in b_smap}, js_rzp_hook={'/api/payments/config' in site_js}",
+            )
+
+            # 60. Production TRUST_PROXY Per-IP Buckets & Razorpay SDK Payload Alias Support
+            srv.config.trust_proxy = True
+            srv.rate_limiter._buckets.clear()
+            proxy_codes = []
+            for idx_px in range(12):
+                st_px, _, _ = http_req(
+                    port,
+                    "POST",
+                    "/api/appointments/check",
+                    body={"appointment_number": "APT-20261128-999", "mobile": "9822334455"},
+                    headers={"X-Real-IP": f"203.0.113.{10 + idx_px}"},
+                )
+                proxy_codes.append(st_px)
+            srv.config.trust_proxy = False
+            srv.rate_limiter._buckets.clear()
+            srv.config.rate_limit_booking = 50
+            st_sdk_bk, _, b_sdk_bk = http_req(
+                port,
+                "POST",
+                "/api/appointments",
+                body={
+                    "first_name": "Kaveri",
+                    "last_name": "Jadhav",
+                    "mobile": "9822998877",
+                    "department": "General Medicine — Dr. Snehal Patil",
+                    "appointment_date": work2,
+                    "slot_time": "12:00",
+                    "payment_method": "online_razorpay",
+                },
+            )
+            sdk_order = json.loads(b_sdk_bk)["payment"]["provider_order_id"] if st_sdk_bk == 201 else ""
+            sdk_sig = hmac.new(
+                srv.config.razorpay_key_secret.encode("utf-8"),
+                f"{sdk_order}|pay_sdk_001".encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            st_sdk_ver, _, _ = http_req(
+                port,
+                "POST",
+                "/api/payments/online/verify",
+                body={
+                    "razorpay_order_id": sdk_order,
+                    "razorpay_payment_id": "pay_sdk_001",
+                    "razorpay_signature": sdk_sig,
+                },
+            )
+            srv.config.rate_limit_booking = 6
+            record(
+                "Trusted Proxy Per-Client Rate Limiting & Razorpay SDK Alias Verification",
+                all(c == 404 for c in proxy_codes) and st_sdk_bk == 201 and st_sdk_ver == 200,
+                f"proxy_distinct_ip_404={proxy_codes.count(404)}/12, sdk_verify={st_sdk_ver}",
+            )
+
+            # 61. Production Deployment Files Hygiene (Caddyfile, .env.production.example, Docker, Guide)
+            caddy_txt = open(os.path.join(BASE_DIR, "Caddyfile.example"), encoding="utf-8").read()
+            prod_env_txt = open(os.path.join(BASE_DIR, ".env.production.example"), encoding="utf-8").read()
+            dc_txt = open(os.path.join(BASE_DIR, "docker-compose.yml"), encoding="utf-8").read()
+            guide_exists = os.path.isfile(os.path.join(BASE_DIR, "DEPLOY_PRODUCTION_GUIDE.md"))
+            prod_origins_line = next((ln for ln in prod_env_txt.splitlines() if ln.startswith("ALLOWED_ORIGINS=")), "")
+            prod_hygiene_ok = (
+                "/patient*" in caddy_txt
+                and "/staff*" in caddy_txt
+                and "noindex, nofollow" in caddy_txt
+                and "TRUST_PROXY=true" in prod_env_txt
+                and "SECURE_COOKIES=true" in prod_env_txt
+                and "DEBUG=false" in prod_env_txt
+                and "127.0.0.1" not in prod_origins_line
+                and "HOST=0.0.0.0" in dc_txt
+                and "./data:/app/data" in dc_txt
+                and "./backups:/app/backups" in dc_txt
+                and guide_exists
+            )
+            record(
+                "Production Config Hygiene (Caddy /patient*, Docker Volumes, .env.production & Guide)",
+                prod_hygiene_ok,
+                f"caddy_patient={'/patient*' in caddy_txt}, trust_proxy={'TRUST_PROXY=true' in prod_env_txt}, guide={guide_exists}",
+            )
+
             # 13. Rate limiting enforcement
             codes = []
             retry_seen = False

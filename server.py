@@ -23,13 +23,17 @@ import gzip
 import hashlib
 import hmac
 import html
+import ipaddress
 import json
 import os
 import re
 import secrets
+import smtplib
+import ssl
 import threading
 import time
 from datetime import datetime
+from email.message import EmailMessage
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Deque, Dict, Optional, Tuple
@@ -260,8 +264,18 @@ class AppConfig:
         self.session_secret = _safe_server_secret(os.environ.get("SESSION_SECRET", ""), min_len=32)
         self.sms_api_key = os.environ.get("SMS_GATEWAY_API_KEY", "")
         self.sms_provider = os.environ.get("SMS_PROVIDER", "").strip().lower()
-        self.msg91_sender_id = os.environ.get("MSG91_SENDER_ID", "RMPHSP").strip()
-        self.msg91_template_id = os.environ.get("MSG91_TEMPLATE_ID", "").strip()
+        self.sms_dlt_entity_id = os.environ.get("SMS_DLT_ENTITY_ID", "").strip()
+        self.msg91_sender_id = (
+            os.environ.get("SMS_SENDER_ID") or os.environ.get("MSG91_SENDER_ID") or "RMPHSP"
+        ).strip()
+        self.msg91_template_id = (
+            os.environ.get("SMS_DLT_TEMPLATE_ID") or os.environ.get("MSG91_TEMPLATE_ID") or ""
+        ).strip()
+        self.public_base_url = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
+        self.smtp_host = os.environ.get("SMTP_HOST", "").strip()
+        self.smtp_port = int(os.environ.get("SMTP_PORT", "587") or "587")
+        self.smtp_user = os.environ.get("SMTP_USER", "").strip()
+        self.smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
         self.razorpay_key_id = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_replace_me")
         self.razorpay_key_secret = _safe_server_secret(os.environ.get("RAZORPAY_KEY_SECRET", ""), min_len=16)
         self.razorpay_webhook_secret = _safe_server_secret(os.environ.get("RAZORPAY_WEBHOOK_SECRET", ""), min_len=16)
@@ -429,10 +443,18 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
 
     def _client_ip(self) -> str:
         peer = self.client_address[0] if self.client_address else "unknown"
-        if self.cfg.trust_proxy and peer in ("127.0.0.1", "::1"):
-            real_ip = (self.headers.get("X-Real-IP") or "").strip()
-            if real_ip and re.fullmatch(r"[0-9a-fA-F.:]{3,45}", real_ip):
-                return real_ip
+        if self.cfg.trust_proxy:
+            is_trusted_proxy = peer in ("127.0.0.1", "::1")
+            if not is_trusted_proxy:
+                try:
+                    ip_obj = ipaddress.ip_address(peer)
+                    is_trusted_proxy = ip_obj.is_loopback or ip_obj.is_private
+                except ValueError:
+                    is_trusted_proxy = False
+            if is_trusted_proxy:
+                real_ip = (self.headers.get("X-Real-IP") or "").strip()
+                if real_ip and re.fullmatch(r"[0-9a-fA-F.:]{3,45}", real_ip):
+                    return real_ip
         return peer
 
     def _has_real_sms_key(self) -> bool:
@@ -487,13 +509,19 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
         if not self._has_real_sms_key():
             return "queued_local"
         if self.cfg.sms_provider == "fast2sms":
-            payload = json.dumps({
-                "route": "q",
+            f2s_body: Dict[str, Any] = {
+                "route": "dlt" if (self.cfg.msg91_template_id and not self.cfg.msg91_template_id.startswith("replace_with_")) else "q",
                 "message": text,
                 "language": "english",
                 "flash": 0,
                 "numbers": mobile,
-            }).encode("utf-8")
+            }
+            if f2s_body["route"] == "dlt":
+                f2s_body["sender_id"] = self.cfg.msg91_sender_id
+                f2s_body["template_id"] = self.cfg.msg91_template_id
+                if self.cfg.sms_dlt_entity_id and not self.cfg.sms_dlt_entity_id.startswith("replace_with_"):
+                    f2s_body["entity_id"] = self.cfg.sms_dlt_entity_id
+            payload = json.dumps(f2s_body).encode("utf-8")
             req = urllib_request.Request(
                 "https://www.fast2sms.com/dev/bulkV2",
                 data=payload,
@@ -530,6 +558,34 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
                 return "gateway_error"
         return "sent"
 
+    def _has_real_smtp(self) -> bool:
+        return bool(
+            self.cfg.smtp_host
+            and self.cfg.smtp_user
+            and self.cfg.smtp_password
+            and "replace_with_" not in self.cfg.smtp_user.lower()
+            and "replace_with_" not in self.cfg.smtp_password.lower()
+        )
+
+    def _dispatch_email(self, to_email: str, subject: str, body_text: str) -> str:
+        """Send recovery OTP email over TLS SMTP when production SMTP credentials are configured."""
+        if not self._has_real_smtp():
+            return "queued_local"
+        try:
+            msg = EmailMessage()
+            msg["From"] = self.cfg.smtp_user
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg.set_content(body_text)
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP(self.cfg.smtp_host, self.cfg.smtp_port, timeout=5) as client:
+                client.starttls(context=ctx)
+                client.login(self.cfg.smtp_user, self.cfg.smtp_password)
+                client.send_message(msg)
+            return "sent"
+        except Exception:
+            return "smtp_error"
+
     def _apply_security_headers(self, is_api: bool = False) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
@@ -544,7 +600,9 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.send_header(
                 "Content-Security-Policy",
                 "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://checkout.razorpay.com; "
-                "style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.razorpay.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com data:; "
+                "img-src 'self' data: https://*.razorpay.com; "
                 "frame-src https://api.razorpay.com https://checkout.razorpay.com; "
                 "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; "
                 "frame-ancestors 'none'; base-uri 'self'",
@@ -1185,13 +1243,30 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(txt)
             return
 
-        if path == "/sitemap.xml":
-            xml = (
-                b'<?xml version="1.0" encoding="UTF-8"?>'
-                b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-                b'<url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>'
-                b'</urlset>'
+        if path == "/favicon.ico":
+            icon = (
+                b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+                b'<rect width="64" height="64" rx="16" fill="#00768A"/>'
+                b'<path d="M27 14h10v13h13v10H37v13H27V37H14V27h13z" fill="#fff"/>'
+                b"</svg>"
             )
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(icon)))
+            self.send_header("Cache-Control", "public, max-age=604800")
+            self._apply_security_headers(is_api=False)
+            self.end_headers()
+            self.wfile.write(icon)
+            return
+
+        if path == "/sitemap.xml":
+            loc = f"{self.cfg.public_base_url}/" if self.cfg.public_base_url.startswith(("http://", "https://")) else "/"
+            xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                f"<url><loc>{html.escape(loc)}</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>"
+                "</urlset>"
+            ).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/xml; charset=utf-8")
             self.send_header("Content-Length", str(len(xml)))
@@ -1576,9 +1651,9 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             if err or body is None:
                 self._send_json(400, {"error": err or "Bad request"})
                 return
-            order_id = str(body.get("order_id", "")).strip()
-            payment_id = str(body.get("payment_id", "")).strip()
-            signature = str(body.get("signature", "")).strip()
+            order_id = str(body.get("order_id") or body.get("razorpay_order_id") or "").strip()
+            payment_id = str(body.get("payment_id") or body.get("razorpay_payment_id") or "").strip()
+            signature = str(body.get("signature") or body.get("razorpay_signature") or "").strip()
             if not order_id or not payment_id or not signature:
                 self._send_json(400, {"error": "order_id, payment_id, and signature are required."})
                 return
@@ -2170,6 +2245,12 @@ class HospitalRequestHandler(BaseHTTPRequestHandler):
             if code:
                 if phone:
                     self._dispatch_sms(phone, f"Shri R.M. Patil Hospital password reset OTP: {code} (valid 10 min).")
+                if email:
+                    self._dispatch_email(
+                        email,
+                        "Shri R.M. Patil Hospital — Password Reset Code",
+                        f"Your single-use password reset code is: {code}\nThis code expires in 10 minutes.\n",
+                    )
                 self.db.log_audit(username, "PASSWORD_RESET_REQUESTED", self._client_ip(), 200)
             self._send_json(200, {"message": "If the username and recovery email/phone match, a 6-digit reset code has been dispatched."})
             return

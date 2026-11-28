@@ -1,126 +1,851 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Staff &amp; Doctor Portal — Shri R.M. Patil Multi Speciality Hospital</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    media="print" onload="this.media='all'" />
   <style>
-    *,*::before,*::after{box-sizing:border-box}
-    html{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
-    body{margin:0;background:#f1f5f9;color:#0f172a;line-height:1.5;overflow-x:hidden}
-    a{color:inherit;text-decoration:none}
-    button,input,select,textarea{font-family:inherit}
-    .hidden{display:none!important}
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box
+    }
+
+    html {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-text-size-adjust: 100%
+    }
+
+    body {
+      margin: 0;
+      background: #f1f5f9;
+      color: #0f172a;
+      line-height: 1.5;
+      overflow-x: hidden
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font-family: inherit
+    }
+
+    .hidden {
+      display: none !important
+    }
 
     /* Sign-In View */
-    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:linear-gradient(135deg,#0B1242 0%,#005B6B 60%,#00768A 100%)}
-    .login-card{background:#fff;border-radius:24px;max-width:450px;width:100%;padding:32px 26px;box-shadow:0 24px 60px rgba(0,0,0,.32)}
-    .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-    .brand-mark{width:44px;height:44px;border-radius:14px;background:#00768A;color:#fff;font-weight:900;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .login-title{margin:0;font-size:20px;font-weight:900;color:#0f172a}
-    .login-sub{font-size:12.5px;color:#64748b;margin-top:2px}
-    .fld{margin-bottom:13px}
-    .fld label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#475569;margin-bottom:5px}
-    .inp,.sel,.txt{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:13.5px;background:#fff;color:#0f172a}
-    .inp:focus,.sel:focus,.txt:focus{outline:2px solid #00768A;border-color:#00768A}
-    .btn-primary{width:100%;padding:12px 18px;border-radius:999px;border:0;background:#00768A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(0,118,138,.25)}
-    .btn-primary:hover{background:#005B6B}
-    .btn-gold{padding:9px 15px;border-radius:10px;border:0;background:#F4B400;color:#0f172a;font-size:12.5px;font-weight:800;cursor:pointer}
-    .btn-gold:hover{background:#e0a400}
-    .btn-teal{padding:9px 14px;border-radius:10px;border:0;background:#00768A;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer}
-    .btn-teal:hover{background:#005B6B}
-    .btn-out{padding:7px 11px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:11.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center}
-    .btn-red{padding:7px 11px;border-radius:8px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;font-size:11.5px;font-weight:700;cursor:pointer}
-    .err-box{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px}
-    .ok-box{background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px}
-    .login-links{margin-top:14px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#00768A;font-weight:700}
-    .login-links button{background:none;border:0;color:#00768A;font-weight:700;cursor:pointer;padding:0}
-    .sec-note{margin-top:14px;padding:10px 12px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11.5px;color:#64748b}
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: linear-gradient(135deg, #0B1242 0%, #005B6B 60%, #00768A 100%)
+    }
+
+    .login-card {
+      background: #fff;
+      border-radius: 24px;
+      max-width: 450px;
+      width: 100%;
+      padding: 32px 26px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .32)
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: #00768A;
+      color: #fff;
+      font-weight: 900;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .login-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      color: #0f172a
+    }
+
+    .login-sub {
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 2px
+    }
+
+    .fld {
+      margin-bottom: 13px
+    }
+
+    .fld label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #475569;
+      margin-bottom: 5px
+    }
+
+    .inp,
+    .sel,
+    .txt {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      font-size: 13.5px;
+      background: #fff;
+      color: #0f172a
+    }
+
+    .inp:focus,
+    .sel:focus,
+    .txt:focus {
+      outline: 2px solid #00768A;
+      border-color: #00768A
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px 18px;
+      border-radius: 999px;
+      border: 0;
+      background: #00768A;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0, 118, 138, .25)
+    }
+
+    .btn-primary:hover {
+      background: #005B6B
+    }
+
+    .btn-gold {
+      padding: 9px 15px;
+      border-radius: 10px;
+      border: 0;
+      background: #F4B400;
+      color: #0f172a;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer
+    }
+
+    .btn-gold:hover {
+      background: #e0a400
+    }
+
+    .btn-teal {
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 0;
+      background: #00768A;
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .btn-teal:hover {
+      background: #005B6B
+    }
+
+    .btn-out {
+      padding: 7px 11px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center
+    }
+
+    .btn-red {
+      padding: 7px 11px;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .err-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 12px
+    }
+
+    .ok-box {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 12px
+    }
+
+    .login-links {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      color: #00768A;
+      font-weight: 700
+    }
+
+    .login-links button {
+      background: none;
+      border: 0;
+      color: #00768A;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0
+    }
+
+    .sec-note {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      color: #64748b
+    }
 
     /* Authenticated Role-Scoped Workspace */
-    .shell{display:flex;min-height:100vh}
-    .sidebar{width:264px;background:#0B1242;color:#cbd5e1;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:50;transform:translateX(-100%);transition:transform .2s ease}
-    .sidebar.open{transform:translateX(0)}
-    .sb-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:45;display:none}
-    .sb-backdrop.open{display:block}
-    .sb-head{padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px}
-    .sb-logo{width:40px;height:40px;border-radius:12px;background:#00768A;color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .sb-title{font-weight:800;color:#fff;font-size:14.5px;line-height:1.2}
-    .sb-sub{font-size:11px;color:#5eead4;font-weight:600;margin-top:2px}
-    .sb-nav{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
-    .sb-group{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#64748b;padding:10px 10px 3px}
-    .sb-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 12px;border-radius:12px;border:0;background:transparent;color:#cbd5e1;font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s}
-    .sb-btn:hover{background:rgba(255,255,255,.08);color:#fff}
-    .sb-btn.active{background:#00768A;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(0,118,138,.35)}
-    .sb-foot{padding:14px 12px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:8px}
-    .sb-link{display:block;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.08);color:#e2e8f0;font-size:12.5px;font-weight:600;text-align:center}
-    .sb-link:hover{background:rgba(255,255,255,.16);color:#fff}
-    .sb-logout{padding:9px 12px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(239,68,68,.12);color:#fca5a5;font-size:12.5px;font-weight:700;cursor:pointer}
-    .sb-logout:hover{background:rgba(239,68,68,.25);color:#fff}
+    .shell {
+      display: flex;
+      min-height: 100vh
+    }
 
-    .main{flex:1;display:flex;flex-direction:column;min-width:0}
-    .topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .tb-left{display:flex;align-items:center;gap:12px;min-width:0}
-    .tb-menu{width:40px;height:40px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;display:flex;align-items:center;justify-content:center}
-    .tb-h1{margin:0;font-size:17px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .tb-right{display:flex;align-items:center;gap:8px}
-    .cmd-trigger{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;font-size:12px;font-weight:600;cursor:pointer}
-    .cmd-trigger kbd{font-size:10px;padding:2px 5px;border-radius:5px;background:#fff;border:1px solid #cbd5e1}
-    .role-pill{padding:6px 12px;border-radius:999px;background:#f0fdfa;border:1px solid #99f6e4;color:#00768A;font-size:11px;font-weight:800;text-transform:uppercase}
+    .sidebar {
+      width: 264px;
+      background: #0B1242;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 50;
+      transform: translateX(-100%);
+      transition: transform .2s ease
+    }
 
-    .content{padding:20px 18px 44px;max-width:1280px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
-    .kpi-grid{display:grid;grid-template-columns:1fr;gap:14px}
-    .kpi{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(15,23,42,.04)}
-    .kpi-k{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
-    .kpi-v{font-size:24px;font-weight:900;color:#0f172a;margin-top:5px}
-    .kpi-v.teal{color:#00768A}.kpi-v.green{color:#047857}.kpi-v.amber{color:#b45309}
+    .sidebar.open {
+      transform: translateX(0)
+    }
 
-    .panel{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04)}
-    .panel-head{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
-    .panel-title{margin:0;font-size:16px;font-weight:800;color:#0f172a}
-    .panel-sub{font-size:12px;color:#64748b;margin-top:2px}
-    .panel-body{padding:18px 20px}
-    .grid-2{display:grid;grid-template-columns:1fr;gap:16px}
-    .grid-4{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
-    .med-card{border:1px solid #e2e8f0;border-radius:14px;padding:14px;background:#f8fafc;display:flex;flex-direction:column;gap:8px}
-    .med-card.low{border-color:#f59e0b;background:#fffbeb}
-    .chip-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-    .chip{padding:6px 12px;border-radius:999px;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;font-size:12px;font-weight:600;cursor:pointer}
-    .chip:hover{background:#f0fdfa;border-color:#00768A;color:#00768A}
-    .table-wrap{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}
-    th{text-align:left;padding:11px 14px;background:#f8fafc;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0}
-    td{padding:12px 14px;border-bottom:1px solid #f1f5f9;color:#1e293b;vertical-align:middle}
-    tr:hover td{background:#f8fafc}
-    .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800;text-transform:uppercase}
-    .b-green{background:#dcfce7;color:#166534}.b-blue{background:#dbeafe;color:#1e40af}.b-red{background:#fee2e2;color:#991b1b}.b-amber{background:#fef3c7;color:#92400e}
-    .empty{padding:24px;text-align:center;color:#64748b;font-size:13px}
-    .row-card{padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
-    .form-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}
+    .sb-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .55);
+      z-index: 45;
+      display: none
+    }
+
+    .sb-backdrop.open {
+      display: block
+    }
+
+    .sb-head {
+      padding: 20px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .sb-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: #00768A;
+      color: #fff;
+      font-weight: 900;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .sb-title {
+      font-weight: 800;
+      color: #fff;
+      font-size: 14.5px;
+      line-height: 1.2
+    }
+
+    .sb-sub {
+      font-size: 11px;
+      color: #5eead4;
+      font-weight: 600;
+      margin-top: 2px
+    }
+
+    .sb-nav {
+      flex: 1;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto
+    }
+
+    .sb-group {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #64748b;
+      padding: 10px 10px 3px
+    }
+
+    .sb-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 0;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all .15s
+    }
+
+    .sb-btn:hover {
+      background: rgba(255, 255, 255, .08);
+      color: #fff
+    }
+
+    .sb-btn.active {
+      background: #00768A;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0, 118, 138, .35)
+    }
+
+    .sb-foot {
+      padding: 14px 12px;
+      border-top: 1px solid rgba(255, 255, 255, .1);
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .sb-link {
+      display: block;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .08);
+      color: #e2e8f0;
+      font-size: 12.5px;
+      font-weight: 600;
+      text-align: center
+    }
+
+    .sb-link:hover {
+      background: rgba(255, 255, 255, .16);
+      color: #fff
+    }
+
+    .sb-logout {
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(248, 113, 113, .4);
+      background: rgba(239, 68, 68, .12);
+      color: #fca5a5;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .sb-logout:hover {
+      background: rgba(239, 68, 68, .25);
+      color: #fff
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .tb-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0
+    }
+
+    .tb-menu {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .tb-h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .cmd-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .cmd-trigger kbd {
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #fff;
+      border: 1px solid #cbd5e1
+    }
+
+    .role-pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      color: #00768A;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase
+    }
+
+    .content {
+      padding: 20px 18px 44px;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px
+    }
+
+    .kpi {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .04)
+    }
+
+    .kpi-k {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #64748b
+    }
+
+    .kpi-v {
+      font-size: 24px;
+      font-weight: 900;
+      color: #0f172a;
+      margin-top: 5px
+    }
+
+    .kpi-v.teal {
+      color: #00768A
+    }
+
+    .kpi-v.green {
+      color: #047857
+    }
+
+    .kpi-v.amber {
+      color: #b45309
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .04)
+    }
+
+    .panel-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a
+    }
+
+    .panel-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px
+    }
+
+    .panel-body {
+      padding: 18px 20px
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 12px
+    }
+
+    .med-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .med-card.low {
+      border-color: #f59e0b;
+      background: #fffbeb
+    }
+
+    .chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px
+    }
+
+    .chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .chip:hover {
+      background: #f0fdfa;
+      border-color: #00768A;
+      color: #00768A
+    }
+
+    .table-wrap {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 620px
+    }
+
+    th {
+      text-align: left;
+      padding: 11px 14px;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid #e2e8f0
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle
+    }
+
+    tr:hover td {
+      background: #f8fafc
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase
+    }
+
+    .b-green {
+      background: #dcfce7;
+      color: #166534
+    }
+
+    .b-blue {
+      background: #dbeafe;
+      color: #1e40af
+    }
+
+    .b-red {
+      background: #fee2e2;
+      color: #991b1b
+    }
+
+    .b-amber {
+      background: #fef3c7;
+      color: #92400e
+    }
+
+    .empty {
+      padding: 24px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px
+    }
+
+    .row-card {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px
+    }
+
+    .form-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 16px
+    }
 
     /* Modals & Toasts */
-    .modal-bg{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.62);display:flex;align-items:flex-start;justify-content:center;padding:10vh 16px}
-    .modal-box{background:#fff;border-radius:16px;max-width:490px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;border:1px solid #e2e8f0}
-    .cmd-inp{width:100%;padding:14px 16px;border:0;border-bottom:1px solid #e2e8f0;font-size:14px;outline:none}
-    .cmd-list{max-height:280px;overflow-y:auto;padding:8px}
-    .cmd-item{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-radius:10px;background:transparent;font-size:13.5px;font-weight:600;color:#1e293b;cursor:pointer}
-    .cmd-item:hover{background:#f0fdfa;color:#00768A}
-    #toast-container{position:fixed;bottom:18px;right:18px;z-index:95;display:flex;flex-direction:column;gap:8px;max-width:360px}
-    .toast{border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;color:#fff;background:#00768A;box-shadow:0 10px 25px rgba(0,0,0,.22)}
-    .toast.red{background:#dc2626}.toast.amber{background:#b45309}
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(15, 23, 42, .62);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 10vh 16px
+    }
 
-    @media(min-width:640px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:repeat(2,1fr)}}
-    @media(min-width:1024px){
-      .sidebar{transform:translateX(0);position:sticky;top:0;height:100vh}
-      .tb-menu,.sb-backdrop{display:none!important}
-      .kpi-grid{grid-template-columns:repeat(4,1fr)}
-      .content{padding:24px 28px 48px}
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 490px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
+      overflow: hidden;
+      border: 1px solid #e2e8f0
+    }
+
+    .cmd-inp {
+      width: 100%;
+      padding: 14px 16px;
+      border: 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
+      outline: none
+    }
+
+    .cmd-list {
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 8px
+    }
+
+    .cmd-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      cursor: pointer
+    }
+
+    .cmd-item:hover {
+      background: #f0fdfa;
+      color: #00768A
+    }
+
+    #toast-container {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 95;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px
+    }
+
+    .toast {
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #fff;
+      background: #00768A;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, .22)
+    }
+
+    .toast.red {
+      background: #dc2626
+    }
+
+    .toast.amber {
+      background: #b45309
+    }
+
+    @media(min-width:640px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    @media(min-width:1024px) {
+      .sidebar {
+        transform: translateX(0);
+        position: sticky;
+        top: 0;
+        height: 100vh
+      }
+
+      .tb-menu,
+      .sb-backdrop {
+        display: none !important
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(4, 1fr)
+      }
+
+      .content {
+        padding: 24px 28px 48px
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="toast-container" role="status" aria-live="polite"></div>
 
@@ -139,11 +864,13 @@
         <div id="login-error" class="hidden err-box" role="alert"></div>
         <div class="fld">
           <label for="staff-user">Staff Username</label>
-          <input type="text" id="staff-user" class="inp" required placeholder="e.g. dr_rohan, reception, nurse, pharmacist" autocomplete="username" />
+          <input type="text" id="staff-user" class="inp" required
+            placeholder="e.g. dr_rohan, reception, nurse, pharmacist" autocomplete="username" />
         </div>
         <div class="fld">
           <label for="staff-pass">Password</label>
-          <input type="password" id="staff-pass" class="inp" required placeholder="Enter your password" autocomplete="current-password" />
+          <input type="password" id="staff-pass" class="inp" required placeholder="Enter your password"
+            autocomplete="current-password" />
         </div>
         <button type="submit" id="login-submit-btn" class="btn-primary">Sign In Securely</button>
       </form>
@@ -161,9 +888,12 @@
         </div>
         <button type="submit" class="btn-primary">Request Single-Use 6-Digit OTP</button>
         <div id="reset-step" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0">
-          <div class="fld"><label for="fp-otp">6-Digit OTP</label><input type="text" id="fp-otp" class="inp" maxlength="6" pattern="[0-9]{6}" placeholder="123456" /></div>
-          <div class="fld"><label for="fp-newpass">New Password (8+ chars, letter &amp; digit)</label><input type="password" id="fp-newpass" class="inp" minlength="8" placeholder="New strong password" /></div>
-          <button type="button" id="confirm-reset-btn" class="btn-gold" style="width:100%">Confirm Password Reset</button>
+          <div class="fld"><label for="fp-otp">6-Digit OTP</label><input type="text" id="fp-otp" class="inp"
+              maxlength="6" pattern="[0-9]{6}" placeholder="123456" /></div>
+          <div class="fld"><label for="fp-newpass">New Password (8+ chars, letter &amp; digit)</label><input
+              type="password" id="fp-newpass" class="inp" minlength="8" placeholder="New strong password" /></div>
+          <button type="button" id="confirm-reset-btn" class="btn-gold" style="width:100%">Confirm Password
+            Reset</button>
         </div>
       </form>
 
@@ -173,7 +903,8 @@
       </div>
 
       <div class="sec-note">
-        Every doctor and staff member signs in with their own individual password. Protected by salted <code>scrypt</code> hashing, signed <code>HttpOnly; SameSite=Strict</code> cookies, and backend RBAC isolation.
+        Every doctor and staff member signs in with their own individual password. Protected by salted
+        <code>scrypt</code> hashing, signed <code>HttpOnly; SameSite=Strict</code> cookies, and backend RBAC isolation.
       </div>
     </div>
   </div>
@@ -192,20 +923,28 @@
         </div>
 
         <nav class="sb-nav" id="sb-nav">
-          <button type="button" class="sb-btn" data-sec="appointments" data-roles="admin,doctor,receptionist,billing">Appointments</button>
+          <button type="button" class="sb-btn" data-sec="appointments"
+            data-roles="admin,doctor,receptionist,billing">Appointments</button>
           <button type="button" class="sb-btn" data-sec="checkin" data-roles="admin,receptionist">QR Check-In</button>
           <button type="button" class="sb-btn" data-sec="prescriptions" data-roles="doctor">Write Prescription</button>
-          <button type="button" class="sb-btn" data-sec="nurse" data-roles="admin,doctor,nurse">Ward Nurse Alerts</button>
-          <button type="button" class="sb-btn" data-sec="holidays" data-roles="admin,doctor">OPD Leave &amp; Holidays</button>
-          <button type="button" class="sb-btn" data-sec="billing" data-roles="admin,billing,receptionist">Hospital Billing &amp; Refunds</button>
-          <button type="button" class="sb-btn" data-sec="pharmacy" data-roles="admin,pharmacist">Shiv Medical Stores</button>
-          <button type="button" class="sb-btn" data-sec="lab" data-roles="admin,lab_tech,doctor">Pathology Lab &amp; Catalog</button>
+          <button type="button" class="sb-btn" data-sec="nurse" data-roles="admin,doctor,nurse">Ward Nurse
+            Alerts</button>
+          <button type="button" class="sb-btn" data-sec="holidays" data-roles="admin,doctor">OPD Leave &amp;
+            Holidays</button>
+          <button type="button" class="sb-btn" data-sec="billing" data-roles="admin,billing,receptionist">Hospital
+            Billing &amp; Refunds</button>
+          <button type="button" class="sb-btn" data-sec="pharmacy" data-roles="admin,pharmacist">Shiv Medical
+            Stores</button>
+          <button type="button" class="sb-btn" data-sec="lab" data-roles="admin,lab_tech,doctor">Pathology Lab &amp;
+            Catalog</button>
           <div class="sb-group">Account Security</div>
-          <button type="button" class="sb-btn" data-sec="profile" data-roles="admin,doctor,receptionist,billing,nurse,pharmacist,lab_tech">My Password &amp; Recovery</button>
+          <button type="button" class="sb-btn" data-sec="profile"
+            data-roles="admin,doctor,receptionist,billing,nurse,pharmacist,lab_tech">My Password &amp; Recovery</button>
         </nav>
 
         <div class="sb-foot">
-          <a id="admin-center-link" href="/admin" class="hidden sb-link" style="background:#00768A;color:#fff">Admin Command Center</a>
+          <a id="admin-center-link" href="/admin" class="hidden sb-link" style="background:#00768A;color:#fff">Admin
+            Command Center</a>
           <a href="/" class="sb-link">Public Hospital Website</a>
           <button type="button" id="staff-logout-btn" class="sb-logout">Sign Out Securely</button>
         </div>
@@ -218,7 +957,8 @@
             <h1 class="tb-h1" id="page-title">Workspace</h1>
           </div>
           <div class="tb-right">
-            <button type="button" id="open-cmd-btn" class="cmd-trigger"><span>Quick Jump</span><kbd>Ctrl+K</kbd></button>
+            <button type="button" id="open-cmd-btn" class="cmd-trigger"><span>Quick
+                Jump</span><kbd>Ctrl+K</kbd></button>
             <button type="button" id="refresh-btn" class="btn-teal">Refresh</button>
             <span id="portal-role-badge" class="role-pill">STAFF</span>
           </div>
@@ -227,10 +967,22 @@
         <main class="content">
           <!-- OPD KPI Strip (Hidden for Nurse / Pharmacist / Lab Tech) -->
           <div id="kpi-strip" class="kpi-grid hidden">
-            <div class="kpi"><div class="kpi-k">Today's Appointments</div><div class="kpi-v teal" id="kpi-daily">0</div></div>
-            <div class="kpi"><div class="kpi-k">Monthly Appointments</div><div class="kpi-v" id="kpi-monthly">0</div></div>
-            <div class="kpi"><div class="kpi-k">Signed-In Account</div><div class="kpi-v green" id="kpi-user" style="font-size:17px">-</div></div>
-            <div class="kpi"><div class="kpi-k">Scope</div><div class="kpi-v amber" id="kpi-scope" style="font-size:16px">-</div></div>
+            <div class="kpi">
+              <div class="kpi-k">Today's Appointments</div>
+              <div class="kpi-v teal" id="kpi-daily">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-k">Monthly Appointments</div>
+              <div class="kpi-v" id="kpi-monthly">0</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-k">Signed-In Account</div>
+              <div class="kpi-v green" id="kpi-user" style="font-size:17px">-</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-k">Scope</div>
+              <div class="kpi-v amber" id="kpi-scope" style="font-size:16px">-</div>
+            </div>
           </div>
 
           <!-- SECTION: APPOINTMENTS (Admin / Doctor / Reception / Billing Ledger) -->
@@ -242,7 +994,8 @@
                   <div class="panel-sub" id="appt-sec-sub">Strictly scoped by role</div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <input type="search" id="appt-search" class="inp" style="width:220px;padding:8px 11px" placeholder="Search name or APT no..." />
+                  <input type="search" id="appt-search" class="inp" style="width:220px;padding:8px 11px"
+                    placeholder="Search name or APT no..." />
                   <select id="appt-filter" class="sel" style="width:140px;padding:8px 11px">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -264,7 +1017,11 @@
                       <th>Permitted Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="appt-tbody"><tr><td colspan="6" class="empty">Loading appointments...</td></tr></tbody>
+                  <tbody id="appt-tbody">
+                    <tr>
+                      <td colspan="6" class="empty">Loading appointments...</td>
+                    </tr>
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -273,10 +1030,17 @@
           <!-- SECTION: QR CHECK-IN (Receptionist & Admin) -->
           <section id="sec-checkin" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">Reception QR Check-In</h2><div class="panel-sub">Verify non-sensitive QR-... token on backend and issue daily Queue Token (Q-...)</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Reception QR Check-In</h2>
+                  <div class="panel-sub">Verify non-sensitive QR-... token on backend and issue daily Queue Token
+                    (Q-...)</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <form id="qr-form" class="form-bar" style="max-width:600px">
-                  <input type="text" id="qr-token-inp" class="inp" style="flex:1;min-width:220px" placeholder="Scan or enter QR-XXXXXXXXXXXX" required />
+                  <input type="text" id="qr-token-inp" class="inp" style="flex:1;min-width:220px"
+                    placeholder="Scan or enter QR-XXXXXXXXXXXX" required />
                   <button type="submit" class="btn-gold">Verify &amp; Check In</button>
                 </form>
                 <div id="qr-result" class="hidden ok-box"></div>
@@ -287,14 +1051,25 @@
           <!-- SECTION: WRITE PRESCRIPTION (Doctor ONLY) -->
           <section id="sec-prescriptions" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">Issue Digital Prescription (Rx)</h2><div class="panel-sub">Strictly Doctor-authored clinical record linked to your own OPD patient</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Issue Digital Prescription (Rx)</h2>
+                  <div class="panel-sub">Strictly Doctor-authored clinical record linked to your own OPD patient</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <form id="rx-form" class="grid-2">
-                  <div class="fld"><label for="rx-appt-id">Select Patient Appointment *</label><select id="rx-appt-id" class="sel" required></select></div>
-                  <div class="fld"><label for="rx-diag">Clinical Diagnosis *</label><input type="text" id="rx-diag" class="inp" maxlength="300" required placeholder="e.g. Acute Viral Fever" /></div>
-                  <div class="fld" style="grid-column:1/-1"><label for="rx-meds">Medicines &amp; Dosage Instructions *</label><textarea id="rx-meds" class="txt" rows="3" maxlength="500" required placeholder="1. Tab. Paracetamol 650mg — 1 tab SOS after food x 3 days"></textarea></div>
-                  <div class="fld"><label for="rx-advice">Advice (Optional)</label><input type="text" id="rx-advice" class="inp" maxlength="300" placeholder="Hydration, rest, review" /></div>
-                  <div class="fld"><label for="rx-followup">Follow-Up Date (Optional)</label><input type="date" id="rx-followup" class="inp" /></div>
+                  <div class="fld"><label for="rx-appt-id">Select Patient Appointment *</label><select id="rx-appt-id"
+                      class="sel" required></select></div>
+                  <div class="fld"><label for="rx-diag">Clinical Diagnosis *</label><input type="text" id="rx-diag"
+                      class="inp" maxlength="300" required placeholder="e.g. Acute Viral Fever" /></div>
+                  <div class="fld" style="grid-column:1/-1"><label for="rx-meds">Medicines &amp; Dosage Instructions
+                      *</label><textarea id="rx-meds" class="txt" rows="3" maxlength="500" required
+                      placeholder="1. Tab. Paracetamol 650mg — 1 tab SOS after food x 3 days"></textarea></div>
+                  <div class="fld"><label for="rx-advice">Advice (Optional)</label><input type="text" id="rx-advice"
+                      class="inp" maxlength="300" placeholder="Hydration, rest, review" /></div>
+                  <div class="fld"><label for="rx-followup">Follow-Up Date (Optional)</label><input type="date"
+                      id="rx-followup" class="inp" /></div>
                   <div><button type="submit" class="btn-gold">Save &amp; Issue Digital Rx</button></div>
                 </form>
                 <div id="rx-msg" class="hidden ok-box" style="margin-top:14px"></div>
@@ -305,22 +1080,39 @@
           <!-- SECTION: WARD NURSE ALERTS (Nurse, Doctor, Admin) -->
           <section id="sec-nurse" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">Ward Nurse Shift Roster &amp; Alerts</h2><div class="panel-sub">Today's active OPD queue &amp; shared ward/vitals notifications (strictly zero billing/Rx edits)</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Ward Nurse Shift Roster &amp; Alerts</h2>
+                  <div class="panel-sub">Today's active OPD queue &amp; shared ward/vitals notifications (strictly zero
+                    billing/Rx edits)</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <form id="nurse-alert-form" class="form-bar">
-                  <input type="text" id="nurse-title" class="inp" style="width:190px" maxlength="100" placeholder="Title (e.g. Vitals Checked)" required />
-                  <input type="text" id="nurse-appt" class="inp" style="width:145px" maxlength="40" placeholder="APT No (optional)" />
-                  <select id="nurse-prio" class="sel" style="width:120px"><option value="normal">Normal</option><option value="urgent">Urgent</option></select>
-                  <input type="text" id="nurse-msg" class="inp" style="flex:1;min-width:210px" maxlength="300" placeholder="Ward / shift note..." required />
+                  <input type="text" id="nurse-title" class="inp" style="width:190px" maxlength="100"
+                    placeholder="Title (e.g. Vitals Checked)" required />
+                  <input type="text" id="nurse-appt" class="inp" style="width:145px" maxlength="40"
+                    placeholder="APT No (optional)" />
+                  <select id="nurse-prio" class="sel" style="width:120px">
+                    <option value="normal">Normal</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                  <input type="text" id="nurse-msg" class="inp" style="flex:1;min-width:210px" maxlength="300"
+                    placeholder="Ward / shift note..." required />
                   <button type="submit" class="btn-gold">Post Ward Alert</button>
                 </form>
                 <div class="grid-2">
                   <div>
-                    <div style="font-size:11.5px;font-weight:800;text-transform:uppercase;color:#00768A;margin-bottom:8px">Today's Active OPD Roster</div>
-                    <div id="nurse-roster-list" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px"></div>
+                    <div
+                      style="font-size:11.5px;font-weight:800;text-transform:uppercase;color:#00768A;margin-bottom:8px">
+                      Today's Active OPD Roster</div>
+                    <div id="nurse-roster-list" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+                    </div>
                   </div>
                   <div>
-                    <div style="font-size:11.5px;font-weight:800;text-transform:uppercase;color:#b45309;margin-bottom:8px">Recent Ward Alerts</div>
+                    <div
+                      style="font-size:11.5px;font-weight:800;text-transform:uppercase;color:#b45309;margin-bottom:8px">
+                      Recent Ward Alerts</div>
                     <div id="nurse-list" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px"></div>
                   </div>
                 </div>
@@ -331,7 +1123,12 @@
           <!-- SECTION: DOCTOR LEAVE / HOLIDAYS (Doctor & Admin) -->
           <section id="sec-holidays" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">OPD Leave &amp; Holiday Schedule</h2><div class="panel-sub">Blocked dates automatically close public OPD booking slots in SQLite</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">OPD Leave &amp; Holiday Schedule</h2>
+                  <div class="panel-sub">Blocked dates automatically close public OPD booking slots in SQLite</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <form id="holiday-form" class="form-bar">
                   <select id="hol-doc" class="sel hidden" style="width:190px">
@@ -341,7 +1138,8 @@
                     <option value="dr_snehal">Dr. Snehal Patil</option>
                   </select>
                   <input type="date" id="hol-date" class="inp" style="width:170px" required />
-                  <input type="text" id="hol-reason" class="inp" style="flex:1;min-width:200px" maxlength="120" placeholder="Reason (e.g. Conference / Leave)" required />
+                  <input type="text" id="hol-reason" class="inp" style="flex:1;min-width:200px" maxlength="120"
+                    placeholder="Reason (e.g. Conference / Leave)" required />
                   <button type="submit" class="btn-gold">Block Date</button>
                 </form>
                 <div id="holidays-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px"></div>
@@ -352,22 +1150,34 @@
           <!-- SECTION: HOSPITAL BILLING & REFUNDS (Billing, Reception, Admin) -->
           <section id="sec-billing" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">Hospital Billing, Unified Invoices &amp; Refunds</h2><div class="panel-sub">OPD + Lab unified invoices (INV-...) and Billing-authorized refunds (RFD-...) — separate from Shiv Medical Stores</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Hospital Billing, Unified Invoices &amp; Refunds</h2>
+                  <div class="panel-sub">OPD + Lab unified invoices (INV-...) and Billing-authorized refunds (RFD-...) —
+                    separate from Shiv Medical Stores</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <div class="grid-2" style="margin-bottom:18px">
-                  <form id="bill-inv-form" style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc">
-                    <div style="font-size:12.5px;font-weight:800;color:#00768A;margin-bottom:8px">Generate Unified Invoice (INV-...)</div>
+                  <form id="bill-inv-form"
+                    style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc">
+                    <div style="font-size:12.5px;font-weight:800;color:#00768A;margin-bottom:8px">Generate Unified
+                      Invoice (INV-...)</div>
                     <div class="fld"><select id="bill-inv-appt" class="sel" required></select></div>
                     <div style="display:flex;gap:8px">
-                      <input type="number" id="bill-inv-pharm" class="inp" min="0" value="0" placeholder="Pharmacy INR" />
+                      <input type="number" id="bill-inv-pharm" class="inp" min="0" value="0"
+                        placeholder="Pharmacy INR" />
                       <button type="submit" class="btn-teal">Create Invoice</button>
                     </div>
                   </form>
-                  <form id="bill-rfd-form" class="hidden" style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fffbeb">
-                    <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:8px">Issue Refund (Billing / Admin Only)</div>
+                  <form id="bill-rfd-form" class="hidden"
+                    style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fffbeb">
+                    <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:8px">Issue Refund (Billing
+                      / Admin Only)</div>
                     <div class="fld"><select id="bill-rfd-appt" class="sel" required></select></div>
                     <div style="display:flex;gap:8px">
-                      <input type="text" id="bill-rfd-reason" class="inp" maxlength="200" required placeholder="Refund reason" />
+                      <input type="text" id="bill-rfd-reason" class="inp" maxlength="200" required
+                        placeholder="Refund reason" />
                       <button type="submit" class="btn-gold">Issue Refund</button>
                     </div>
                   </form>
@@ -380,38 +1190,68 @@
           <!-- SECTION: SHIV MEDICAL STORES (Pharmacist & Admin ONLY) -->
           <section id="sec-pharmacy" class="sec-view hidden">
             <div class="panel" id="pharmacy-panel">
-              <div class="panel-head"><div><h2 class="panel-title">Shiv Medical Stores &mdash; Inventory, Bills &amp; Purchases</h2><div class="panel-sub">Standalone retail pharmacy billing (PHM-...), stock purchases (PUR-...) &amp; store margin report</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Shiv Medical Stores &mdash; Inventory, Bills &amp; Purchases</h2>
+                  <div class="panel-sub">Standalone retail pharmacy billing (PHM-...), stock purchases (PUR-...) &amp;
+                    store margin report</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <div class="kpi-grid" style="margin-bottom:18px">
-                  <div class="kpi"><div class="kpi-k">Store Bills</div><div class="kpi-v" id="ph-bills">0</div></div>
-                  <div class="kpi"><div class="kpi-k">Sales (PAID)</div><div class="kpi-v green" id="ph-sales">&#8377;0</div></div>
-                  <div class="kpi"><div class="kpi-k">Purchases</div><div class="kpi-v" id="ph-purch">&#8377;0</div></div>
-                  <div class="kpi"><div class="kpi-k">Net Margin / Low</div><div class="kpi-v teal" id="ph-margin">&#8377;0</div></div>
+                  <div class="kpi">
+                    <div class="kpi-k">Store Bills</div>
+                    <div class="kpi-v" id="ph-bills">0</div>
+                  </div>
+                  <div class="kpi">
+                    <div class="kpi-k">Sales (PAID)</div>
+                    <div class="kpi-v green" id="ph-sales">&#8377;0</div>
+                  </div>
+                  <div class="kpi">
+                    <div class="kpi-k">Purchases</div>
+                    <div class="kpi-v" id="ph-purch">&#8377;0</div>
+                  </div>
+                  <div class="kpi">
+                    <div class="kpi-k">Net Margin / Low</div>
+                    <div class="kpi-v teal" id="ph-margin">&#8377;0</div>
+                  </div>
                 </div>
                 <div id="pharmacy-cards" class="grid-4" style="margin-bottom:18px"></div>
                 <div class="grid-2" style="margin-bottom:18px">
-                  <form id="pharm-bill-form" style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc">
-                    <div style="font-size:12.5px;font-weight:800;color:#047857;margin-bottom:8px">Create Pharmacy Bill (PHM-...)</div>
+                  <form id="pharm-bill-form"
+                    style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc">
+                    <div style="font-size:12.5px;font-weight:800;color:#047857;margin-bottom:8px">Create Pharmacy Bill
+                      (PHM-...)</div>
                     <div class="grid-2" style="gap:8px;margin-bottom:8px">
-                      <input id="ph-bill-patient" type="text" required maxlength="80" placeholder="Patient name" class="inp" />
-                      <input id="ph-bill-mobile" type="tel" maxlength="15" placeholder="Mobile (optional)" class="inp" />
+                      <input id="ph-bill-patient" type="text" required maxlength="80" placeholder="Patient name"
+                        class="inp" />
+                      <input id="ph-bill-mobile" type="tel" maxlength="15" placeholder="Mobile (optional)"
+                        class="inp" />
                     </div>
                     <div style="display:grid;grid-template-columns:2fr 70px 90px;gap:8px;margin-bottom:8px">
                       <select id="ph-bill-med" class="sel" required></select>
                       <input id="ph-bill-qty" type="number" min="1" max="100" value="1" class="inp" />
-                      <select id="ph-bill-method" class="sel"><option value="upi">UPI</option><option value="cash">Cash</option><option value="card">Card</option></select>
+                      <select id="ph-bill-method" class="sel">
+                        <option value="upi">UPI</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                      </select>
                     </div>
                     <button type="submit" class="btn-teal" style="width:100%">Create Store Bill</button>
                   </form>
-                  <form id="pharm-purchase-form" style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fffbeb">
-                    <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:8px">Record Stock Purchase (PUR-...)</div>
+                  <form id="pharm-purchase-form"
+                    style="padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fffbeb">
+                    <div style="font-size:12.5px;font-weight:800;color:#b45309;margin-bottom:8px">Record Stock Purchase
+                      (PUR-...)</div>
                     <div class="grid-2" style="gap:8px;margin-bottom:8px">
                       <select id="ph-pur-med" class="sel" required></select>
-                      <input id="ph-pur-supplier" type="text" required maxlength="100" placeholder="Supplier name" class="inp" />
+                      <input id="ph-pur-supplier" type="text" required maxlength="100" placeholder="Supplier name"
+                        class="inp" />
                     </div>
                     <div class="grid-2" style="gap:8px;margin-bottom:8px">
                       <input id="ph-pur-qty" type="number" min="1" value="10" placeholder="Qty" class="inp" />
-                      <input id="ph-pur-cost" type="number" min="0" value="50" placeholder="Unit cost INR" class="inp" />
+                      <input id="ph-pur-cost" type="number" min="0" value="50" placeholder="Unit cost INR"
+                        class="inp" />
                     </div>
                     <button type="submit" class="btn-gold" style="width:100%">Record Purchase &amp; Restock</button>
                   </form>
@@ -419,11 +1259,13 @@
                 <div class="grid-2">
                   <div>
                     <div style="font-size:12px;font-weight:800;color:#475569;margin-bottom:6px">Recent Store Bills</div>
-                    <div id="pharm-bills-list" style="display:flex;flex-direction:column;gap:6px;font-size:12.5px"></div>
+                    <div id="pharm-bills-list" style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                    </div>
                   </div>
                   <div>
                     <div style="font-size:12px;font-weight:800;color:#475569;margin-bottom:6px">Recent Purchases</div>
-                    <div id="pharm-purchases-list" style="display:flex;flex-direction:column;gap:6px;font-size:12.5px"></div>
+                    <div id="pharm-purchases-list" style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                    </div>
                   </div>
                 </div>
               </div>
@@ -433,20 +1275,32 @@
           <!-- SECTION: PATHOLOGY LAB (Lab Tech, Doctor, Admin) -->
           <section id="sec-lab" class="sec-view hidden">
             <div class="panel">
-              <div class="panel-head"><div><h2 class="panel-title">Pathology Laboratory &amp; Dynamic Test Catalog</h2><div class="panel-sub">Click a catalog test to prefill orders &bull; Lab Technicians add tests and publish sample reports</div></div></div>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Pathology Laboratory &amp; Dynamic Test Catalog</h2>
+                  <div class="panel-sub">Click a catalog test to prefill orders &bull; Lab Technicians add tests and
+                    publish sample reports</div>
+                </div>
+              </div>
               <div class="panel-body">
                 <div id="lab-catalog-chips" class="chip-wrap"></div>
                 <form id="lab-cat-form" class="hidden form-bar">
-                  <input type="text" id="lc-code" class="inp" style="width:140px" maxlength="24" placeholder="Code (CAT-TSH)" required />
-                  <input type="text" id="lc-name" class="inp" style="flex:1;min-width:180px" maxlength="120" placeholder="Test Name" required />
-                  <input type="text" id="lc-category" class="inp" style="width:140px" maxlength="60" value="Pathology" />
-                  <input type="number" id="lc-price" class="inp" style="width:110px" min="0" max="100000" value="500" required />
+                  <input type="text" id="lc-code" class="inp" style="width:140px" maxlength="24"
+                    placeholder="Code (CAT-TSH)" required />
+                  <input type="text" id="lc-name" class="inp" style="flex:1;min-width:180px" maxlength="120"
+                    placeholder="Test Name" required />
+                  <input type="text" id="lc-category" class="inp" style="width:140px" maxlength="60"
+                    value="Pathology" />
+                  <input type="number" id="lc-price" class="inp" style="width:110px" min="0" max="100000" value="500"
+                    required />
                   <button type="submit" class="btn-gold">+ Add Catalog Test</button>
                 </form>
                 <form id="lab-order-form" class="hidden form-bar">
                   <select id="lab-order-appt" class="sel" style="flex:1;min-width:210px" required></select>
-                  <input type="text" id="lab-order-name" class="inp" style="flex:1;min-width:180px" maxlength="120" placeholder="Test name" required />
-                  <input type="number" id="lab-order-price" class="inp" style="width:110px" min="0" value="350" required />
+                  <input type="text" id="lab-order-name" class="inp" style="flex:1;min-width:180px" maxlength="120"
+                    placeholder="Test name" required />
+                  <input type="number" id="lab-order-price" class="inp" style="width:110px" min="0" value="350"
+                    required />
                   <button type="submit" class="btn-teal">Order Lab Test</button>
                 </form>
                 <div id="lab-tests-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px"></div>
@@ -459,10 +1313,14 @@
             <div class="grid-2">
               <form id="change-password-form" class="panel panel-body">
                 <h2 class="panel-title" style="margin-bottom:4px">Change My Login Password</h2>
-                <div class="panel-sub" style="margin-bottom:14px">Update your own personal login password anytime (min 8 characters with letters &amp; digits).</div>
-                <div class="fld"><label for="cp-current">Current Password</label><input id="cp-current" type="password" required class="inp" /></div>
-                <div class="fld"><label for="cp-new">New Password</label><input id="cp-new" type="password" required minlength="8" class="inp" /></div>
-                <div class="fld"><label for="cp-confirm">Confirm New Password</label><input id="cp-confirm" type="password" required minlength="8" class="inp" /></div>
+                <div class="panel-sub" style="margin-bottom:14px">Update your own personal login password anytime (min 8
+                  characters with letters &amp; digits).</div>
+                <div class="fld"><label for="cp-current">Current Password</label><input id="cp-current" type="password"
+                    required class="inp" /></div>
+                <div class="fld"><label for="cp-new">New Password</label><input id="cp-new" type="password" required
+                    minlength="8" class="inp" /></div>
+                <div class="fld"><label for="cp-confirm">Confirm New Password</label><input id="cp-confirm"
+                    type="password" required minlength="8" class="inp" /></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                   <span id="cp-status" style="font-size:12px;font-family:monospace;color:#00768A"></span>
                   <button type="submit" class="btn-gold">Update Password</button>
@@ -471,9 +1329,12 @@
 
               <form id="contact-form" class="panel panel-body">
                 <h2 class="panel-title" style="margin-bottom:4px">My Recovery Gmail &amp; Mobile (Private)</h2>
-                <div class="panel-sub" style="margin-bottom:14px">Used strictly for your own single-use 10-minute OTP password resets.</div>
-                <div class="fld"><label for="my-email">Personal Gmail / Email</label><input type="email" id="my-email" class="inp" placeholder="name@gmail.com" /></div>
-                <div class="fld"><label for="my-phone">10-Digit Mobile</label><input type="tel" id="my-phone" class="inp" placeholder="9876543210" /></div>
+                <div class="panel-sub" style="margin-bottom:14px">Used strictly for your own single-use 10-minute OTP
+                  password resets.</div>
+                <div class="fld"><label for="my-email">Personal Gmail / Email</label><input type="email" id="my-email"
+                    class="inp" placeholder="name@gmail.com" /></div>
+                <div class="fld"><label for="my-phone">10-Digit Mobile</label><input type="tel" id="my-phone"
+                    class="inp" placeholder="9876543210" /></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                   <span id="contact-msg" style="font-size:12px;font-family:monospace;color:#00768A"></span>
                   <button type="submit" class="btn-teal">Save Recovery Info</button>
@@ -501,7 +1362,8 @@
       <p style="margin:0 0 18px;font-size:13.5px;color:#475569" id="cm-desc"></p>
       <div style="display:flex;justify-content:flex-end;gap:10px">
         <button type="button" id="cm-cancel" class="btn-out">Cancel</button>
-        <button type="button" id="cm-ok" class="btn-red" style="background:#dc2626;color:#fff;border-color:#dc2626">Confirm</button>
+        <button type="button" id="cm-ok" class="btn-red"
+          style="background:#dc2626;color:#fff;border-color:#dc2626">Confirm</button>
       </div>
     </div>
   </div>
@@ -517,11 +1379,14 @@
         <button type="button" id="notify-close" class="btn-out">X</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button type="button" class="chip tpl-btn" data-tpl="Doctor is ready for your consultation. Please proceed to the OPD counter.">OPD Ready</button>
-        <button type="button" class="chip tpl-btn" data-tpl="Please bring previous prescriptions, lab reports, or X-rays for review.">Bring Reports</button>
+        <button type="button" class="chip tpl-btn"
+          data-tpl="Doctor is ready for your consultation. Please proceed to the OPD counter.">OPD Ready</button>
+        <button type="button" class="chip tpl-btn"
+          data-tpl="Please bring previous prescriptions, lab reports, or X-rays for review.">Bring Reports</button>
       </div>
       <form id="notify-form">
-        <div class="fld"><textarea id="notify-input" class="txt" rows="3" maxlength="260" required placeholder="Enter patient SMS message..."></textarea></div>
+        <div class="fld"><textarea id="notify-input" class="txt" rows="3" maxlength="260" required
+            placeholder="Enter patient SMS message..."></textarea></div>
         <div style="display:flex;justify-content:flex-end;gap:8px">
           <button type="button" id="notify-cancel" class="btn-out">Cancel</button>
           <button type="submit" class="btn-teal">Send SMS</button>
@@ -622,7 +1487,7 @@
           if (!res.ok) { err.textContent = res.d.error || 'Invalid username or password.'; err.classList.remove('hidden'); return; }
           if (res.d.user && res.d.user.role === 'patient') {
             var tok = res.d.csrf_token || '';
-            fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': tok } }).catch(function () {});
+            fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': tok } }).catch(function () { });
             err.textContent = 'Patient accounts should sign in via /patient instead.';
             err.classList.remove('hidden');
             return;
@@ -800,7 +1665,7 @@
               document.getElementById('kpi-daily').textContent = d.daily_count || 0;
               document.getElementById('kpi-monthly').textContent = d.monthly_count || 0;
             }
-          }).catch(function () {});
+          }).catch(function () { });
 
           fetch('/api/staff/appointments').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             if (!d) return;
@@ -816,7 +1681,7 @@
             document.getElementById('bill-rfd-appt').innerHTML = paid.length
               ? paid.map(function (a) { return '<option value="' + esc(a.id) + '">' + esc(a.appointment_number) + ' — &#8377;' + esc(a.amount_inr || 0) + '</option>'; }).join('')
               : '<option value="">No PAID payments eligible</option>';
-          }).catch(function () {});
+          }).catch(function () { });
         }
 
         if (['billing', 'receptionist', 'admin'].indexOf(role) !== -1) {
@@ -825,10 +1690,10 @@
             var invs = (d && d.invoices) || [];
             document.getElementById('billing-invoices-list').innerHTML = invs.length
               ? invs.slice(0, 15).map(function (i) {
-                  return '<div class="row-card"><strong>' + esc(i.invoice_number) + ' · ' + esc(i.appointment_number) + '</strong><span>Consult &#8377;' + esc(i.consultation_inr) + ' + Lab &#8377;' + esc(i.lab_inr) + ' + Pharm &#8377;' + esc(i.pharmacy_inr) + ' = <strong style="color:#047857">&#8377;' + esc(i.total_inr) + '</strong></span></div>';
-                }).join('')
+                return '<div class="row-card"><strong>' + esc(i.invoice_number) + ' · ' + esc(i.appointment_number) + '</strong><span>Consult &#8377;' + esc(i.consultation_inr) + ' + Lab &#8377;' + esc(i.lab_inr) + ' + Pharm &#8377;' + esc(i.pharmacy_inr) + ' = <strong style="color:#047857">&#8377;' + esc(i.total_inr) + '</strong></span></div>';
+              }).join('')
               : '<div class="empty">No unified invoices generated yet.</div>';
-          }).catch(function () {});
+          }).catch(function () { });
         }
 
         if (['admin', 'pharmacist'].indexOf(role) !== -1) {
@@ -839,7 +1704,7 @@
             document.getElementById('ph-sales').textContent = '\u20B9' + (r.total_sales_inr || 0);
             document.getElementById('ph-purch').textContent = '\u20B9' + (r.total_purchases_inr || 0);
             document.getElementById('ph-margin').textContent = '\u20B9' + (r.net_margin_inr || 0) + ' (' + (r.low_stock_items || 0) + ' low)';
-          }).catch(function () {});
+          }).catch(function () { });
 
           fetch('/api/pharmacy/inventory').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             var items = (d && d.items) || [];
@@ -857,21 +1722,21 @@
                   .then(function (res) { if (res.ok) { toast('Dispensed 1 strip!'); loadRoleData(); } else toast(res.d.error || 'Dispense failed', 'red'); });
               });
             });
-          }).catch(function () {});
+          }).catch(function () { });
 
           fetch('/api/pharmacy/bills').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             var bs = (d && d.bills) || [];
             document.getElementById('pharm-bills-list').innerHTML = bs.length
               ? bs.slice(0, 10).map(function (b) { return '<div class="row-card"><span><strong style="color:#047857">' + esc(b.bill_number) + '</strong> · ' + esc(b.patient_name) + '</span><strong>&#8377;' + esc(b.total_inr) + '</strong></div>'; }).join('')
               : '<div class="empty">No store bills yet.</div>';
-          }).catch(function () {});
+          }).catch(function () { });
 
           fetch('/api/pharmacy/purchases').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             var ps = (d && d.purchases) || [];
             document.getElementById('pharm-purchases-list').innerHTML = ps.length
               ? ps.slice(0, 10).map(function (p) { return '<div class="row-card"><span><strong style="color:#b45309">' + esc(p.purchase_code) + '</strong> · ' + esc(p.medicine_code) + ' ×' + esc(p.quantity) + '</span><strong>&#8377;' + esc(p.total_cost_inr) + '</strong></div>'; }).join('')
               : '<div class="empty">No purchases yet.</div>';
-          }).catch(function () {});
+          }).catch(function () { });
         }
 
         if (['admin', 'lab_tech', 'doctor'].indexOf(role) !== -1) {
@@ -890,7 +1755,7 @@
                 document.getElementById('lab-order-price').value = ch.getAttribute('data-price') || '350';
               });
             });
-          }).catch(function () {});
+          }).catch(function () { });
 
           fetch('/api/lab/tests').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             var tests = (d && d.lab_tests) || [];
@@ -912,7 +1777,7 @@
                 }).then(function (r) { if (r.ok) { toast('Lab report updated!'); loadRoleData(); } else toast('Update failed', 'red'); });
               });
             });
-          }).catch(function () {});
+          }).catch(function () { });
         }
 
         if (['admin', 'doctor', 'nurse'].indexOf(role) !== -1) {
@@ -926,7 +1791,7 @@
               var cls = n.priority === 'urgent' ? 'b-red' : 'b-blue';
               return '<div class="row-card"><div><strong>' + esc(n.title) + ':</strong> ' + esc(n.message) + '<div style="font-size:11px;color:#64748b">By ' + esc(n.created_by) + (n.appointment_number ? ' · ' + esc(n.appointment_number) : '') + '</div></div><span class="badge ' + cls + '">' + esc(n.priority) + '</span></div>';
             }).join('') : '<div class="empty">No ward alerts posted yet.</div>';
-          }).catch(function () {});
+          }).catch(function () { });
         }
 
         if (['admin', 'doctor'].indexOf(role) !== -1) {
@@ -936,7 +1801,7 @@
             document.getElementById('holidays-list').innerHTML = hols.length ? hols.map(function (h) {
               return '<div class="row-card"><span><strong>' + esc(h.doctor_name || h.doctor_username) + '</strong> · ' + esc(h.reason) + '</span><span style="font-family:monospace;color:#b45309">' + esc(h.holiday_date) + '</span></div>';
             }).join('') : '<div class="empty">No upcoming holidays scheduled.</div>';
-          }).catch(function () {});
+          }).catch(function () { });
         }
       }
 
@@ -1167,7 +2032,7 @@
           if (hd) { hd.min = todayIst; if (!hd.value) hd.value = todayIst; }
           if (rxF) rxF.min = todayIst;
         }
-      }).catch(function () {});
+      }).catch(function () { });
 
       fetch('/api/auth/me').then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
         if (me && me.username) {
@@ -1179,8 +2044,9 @@
             enterPortal({ username: me.username, full_name: me.full_name, role: me.role }, me.csrf_token || '');
           }
         }
-      }).catch(function () {});
+      }).catch(function () { });
     })();
   </script>
 </body>
+
 </html>

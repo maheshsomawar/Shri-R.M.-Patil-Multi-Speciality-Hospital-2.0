@@ -1,20 +1,23 @@
 # Production Reverse Proxy with Automatic Let's Encrypt HTTPS, Zstd/Gzip Compression & Strict Privacy Caching
-# Replace hospital.example.com with your real domain pointing to this server.
+# Replace shrirmppatilhospital.in with your real public domain pointing to this server.
 
-hospital.example.com {
+shrirmppatilhospital.in, www.shrirmppatilhospital.in {
     encode zstd gzip
 
     # Long-lived immutable caching for fingerprinted public assets ONLY
     @public_assets path /assets/*
     header @public_assets Cache-Control "public, max-age=31536000, immutable"
 
-    # Strict zero public caching for private staff, admin, patient & API endpoints
-    @private_routes path /staff* /admin* /api/*
+    # Strict zero public caching for ALL private staff, admin, patient & API endpoints
+    @private_routes path /staff* /admin* /patient* /api/*
     header @private_routes {
         Cache-Control "no-store, no-cache, must-revalidate, private"
         Pragma "no-cache"
+        X-Robots-Tag "noindex, nofollow"
     }
 
+    # If running Python directly on the Linux host, use 127.0.0.1:8080
+    # If running inside Docker Compose, map ports or share network with app:8080
     reverse_proxy 127.0.0.1:8080 {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-Proto {scheme}

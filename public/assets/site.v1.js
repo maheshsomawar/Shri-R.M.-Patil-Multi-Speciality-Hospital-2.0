@@ -91,6 +91,69 @@
   });
 
   var privacyModal = document.getElementById('privacy-modal');
+  var refundModal = document.getElementById('refund-modal');
+  var termsModal = document.getElementById('terms-modal');
+  if (refundModal) {
+    document.getElementById('open-refund-btn').addEventListener('click', function () { refundModal.classList.remove('hidden'); });
+    document.getElementById('close-refund-modal').addEventListener('click', function () { refundModal.classList.add('hidden'); });
+    document.getElementById('ok-refund-modal').addEventListener('click', function () { refundModal.classList.add('hidden'); });
+  }
+  if (termsModal) {
+    document.getElementById('open-terms-btn').addEventListener('click', function () { termsModal.classList.remove('hidden'); });
+    document.getElementById('close-terms-modal').addEventListener('click', function () { termsModal.classList.add('hidden'); });
+    document.getElementById('ok-terms-modal').addEventListener('click', function () { termsModal.classList.add('hidden'); });
+  }
+
+  function launchRazorpayCheckoutIfLive(pay, appt, patientName, mobile) {
+    if (!pay || !pay.provider_order_id || String(pay.provider_order_id).indexOf('order_local_') === 0) return;
+    fetch('/api/payments/config', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cfg) {
+        if (!cfg || !cfg.razorpay_configured || !cfg.key_id) return;
+        function openCheckout() {
+          if (!window.Razorpay) return;
+          var rzp = new window.Razorpay({
+            key: cfg.key_id,
+            amount: Number(pay.amount_inr || 500) * 100,
+            currency: 'INR',
+            name: 'Shri R.M. Patil Multi Speciality Hospital',
+            description: 'OPD Consultation (' + (appt.appointment_number || '') + ')',
+            order_id: pay.provider_order_id,
+            prefill: { name: patientName, contact: mobile },
+            theme: { color: '#00768A' },
+            handler: function (resp) {
+              fetch('/api/payments/online/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                  order_id: resp.razorpay_order_id || pay.provider_order_id,
+                  payment_id: resp.razorpay_payment_id,
+                  signature: resp.razorpay_signature
+                })
+              }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+                .then(function (out) {
+                  if (out.ok) {
+                    var p = out.data.payment || {};
+                    document.getElementById('conf-payment').textContent =
+                      '\u20B9' + (p.amount_inr || pay.amount_inr || 500) + ' \u2014 Online UPI / Card (PAID' +
+                      (p.receipt_number ? ' · ' + p.receipt_number : '') + ')';
+                  }
+                });
+            }
+          });
+          rzp.open();
+        }
+        if (window.Razorpay) { openCheckout(); return; }
+        var sc = document.createElement('script');
+        sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        sc.async = true;
+        sc.onload = openCheckout;
+        document.body.appendChild(sc);
+      })
+      .catch(function () {});
+  }
+
   document.getElementById('open-privacy-btn').addEventListener('click', function () { privacyModal.classList.remove('hidden'); });
   document.getElementById('close-privacy-modal').addEventListener('click', function () { privacyModal.classList.add('hidden'); });
   document.getElementById('ok-privacy-modal').addEventListener('click', function () { privacyModal.classList.add('hidden'); });
@@ -263,6 +326,7 @@
 
         document.getElementById('booking-form-wrap').classList.add('hidden');
         document.getElementById('booking-confirm-card').classList.remove('hidden');
+        launchRazorpayCheckoutIfLive(pay, appt, firstName + ' ' + lastName, mobile);
       })
       .catch(function () {
         errBox.textContent = 'Network error while booking. Please try again.';
